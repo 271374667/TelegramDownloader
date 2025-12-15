@@ -75,7 +75,7 @@ class SessionTab(QWidget):
         # Concurrent tasks limit
         self.limit_spin = QSpinBox()
         self.limit_spin.setRange(1, 50)
-        self.limit_spin.setValue(2)
+        self.limit_spin.setValue(8)
         self.limit_spin.setToolTip("Maximum number of concurrent download tasks")
         layout.addRow("Concurrent tasks limit:", self.limit_spin)
 
@@ -175,7 +175,7 @@ class SessionTab(QWidget):
         # Transfer threads
         self.threads_spin = QSpinBox()
         self.threads_spin.setRange(1, 32)
-        self.threads_spin.setValue(4)
+        self.threads_spin.setValue(16)
         self.threads_spin.setToolTip("Maximum threads for transferring one item")
         layout.addRow("Transfer threads per item:", self.threads_spin)
 

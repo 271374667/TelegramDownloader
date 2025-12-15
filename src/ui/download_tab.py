@@ -3,6 +3,8 @@ Download configuration tab for Telegram Downloader GUI
 Handles all download-related tdl parameters
 """
 
+import os
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QCheckBox, QSpinBox, QLineEdit, QGroupBox, QScrollArea,
@@ -101,7 +103,6 @@ class DownloadTab(QWidget):
 
         # Download directory
         dir_layout = QHBoxLayout()
-        import os
         self.directory_edit = QLineEdit(os.path.join(os.getcwd(), "downloads"))
         self.directory_edit.setToolTip("Directory where files will be downloaded")
         dir_layout.addWidget(self.directory_edit)
@@ -111,6 +112,28 @@ class DownloadTab(QWidget):
         dir_layout.addWidget(self.browse_button)
 
         layout.addRow("Download directory:", dir_layout)
+
+        # Subfolder setting
+        subfolder_layout = QHBoxLayout()
+        self.subfolder_checkbox = QCheckBox("Download to subfolder:")
+        self.subfolder_checkbox.setToolTip("Download files to a subfolder under the download directory")
+        self.subfolder_checkbox.toggled.connect(self.on_subfolder_checkbox_toggled)
+        subfolder_layout.addWidget(self.subfolder_checkbox)
+
+        self.subfolder_edit = QLineEdit()
+        self.subfolder_edit.setPlaceholderText("e.g., 相册")
+        self.subfolder_edit.setToolTip("Subfolder name (e.g., 相册, videos, photos)")
+        self.subfolder_edit.setEnabled(False)  # Disabled by default
+        subfolder_layout.addWidget(self.subfolder_edit)
+
+        self.subfolder_browse_button = QPushButton("📁")
+        self.subfolder_browse_button.setToolTip("Browse for subfolder")
+        self.subfolder_browse_button.setMaximumWidth(40)
+        self.subfolder_browse_button.setEnabled(False)  # Disabled by default
+        self.subfolder_browse_button.clicked.connect(self.browse_subfolder)
+        subfolder_layout.addWidget(self.subfolder_browse_button)
+
+        layout.addRow("", subfolder_layout)
 
         # Download options checkboxes
         self.continue_checkbox = QCheckBox("Continue last download")
@@ -131,6 +154,7 @@ class DownloadTab(QWidget):
 
         self.skip_same_checkbox = QCheckBox("Skip same files")
         self.skip_same_checkbox.setToolTip("Skip files with same name and size")
+        self.skip_same_checkbox.setChecked(True)  # Default enabled
         layout.addRow("", self.skip_same_checkbox)
 
         self.takeout_checkbox = QCheckBox("Use takeout session")
@@ -266,6 +290,38 @@ class DownloadTab(QWidget):
 
         return group
 
+    def on_subfolder_checkbox_toggled(self, checked):
+        """Handle subfolder checkbox toggle"""
+        self.subfolder_edit.setEnabled(checked)
+        self.subfolder_browse_button.setEnabled(checked)
+        if not checked:
+            self.subfolder_edit.clear()
+
+    def browse_subfolder(self):
+        """Browse for subfolder directory"""
+        # Use download directory as base path
+        base_path = self.directory_edit.text().strip()
+        if not base_path or not os.path.exists(base_path):
+            base_path = os.getcwd()
+
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Subfolder",
+            base_path,
+            QFileDialog.ShowDirsOnly
+        )
+
+        if directory:
+            # Extract just the folder name relative to download directory
+            download_dir = self.directory_edit.text().strip()
+            if directory.startswith(download_dir):
+                # Get relative path
+                relative_path = os.path.relpath(directory, download_dir)
+                self.subfolder_edit.setText(relative_path)
+            else:
+                # Just use the folder name
+                self.subfolder_edit.setText(os.path.basename(directory))
+
     def browse_directory(self):
         """Browse for download directory"""
         directory = QFileDialog.getExistingDirectory(
@@ -318,6 +374,8 @@ class DownloadTab(QWidget):
             continue_last=self.continue_checkbox.isChecked(),
             desc=self.desc_checkbox.isChecked(),
             directory=self.directory_edit.text().strip() or os.path.join(os.getcwd(), "downloads"),
+            subfolder=self.subfolder_edit.text().strip(),
+            subfolder_enabled=self.subfolder_checkbox.isChecked(),
 
             # File filtering
             include_extensions=include_exts,
@@ -356,6 +414,10 @@ class DownloadTab(QWidget):
         self.continue_checkbox.setChecked(config.continue_last)
         self.desc_checkbox.setChecked(config.desc)
         self.directory_edit.setText(config.directory)
+        self.subfolder_checkbox.setChecked(config.subfolder_enabled)
+        self.subfolder_edit.setText(config.subfolder)
+        self.subfolder_edit.setEnabled(config.subfolder_enabled)
+        self.subfolder_browse_button.setEnabled(config.subfolder_enabled)
 
         # File filtering
         self.include_edit.setText(', '.join(config.include_extensions))

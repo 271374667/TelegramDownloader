@@ -16,7 +16,7 @@ class SessionConfig:
     # Basic settings
     debug: bool = False
     delay: str = "0s"  # duration between each task, zero means no delay
-    limit: int = 2  # max number of concurrent tasks
+    limit: int = 8  # max number of concurrent tasks
     namespace: str = "default"  # namespace for Telegram session
 
     # Network settings
@@ -30,7 +30,7 @@ class SessionConfig:
     storage_path: str = "~/.tdl/data"  # storage path
 
     # Performance settings
-    threads: int = 4  # max threads for transfer one item
+    threads: int = 16  # max threads for transfer one item
 
     # GroupBox enabled states
     basic_settings_enabled: bool = True
@@ -83,6 +83,8 @@ class DownloadConfig:
     continue_last: bool = False  # continue the last download directly
     desc: bool = False  # download files from newest to oldest
     directory: str = field(default_factory=lambda: os.path.join(os.getcwd(), "downloads"))  # download directory
+    subfolder: str = ""  # subfolder under download directory (e.g., "相册")
+    subfolder_enabled: bool = False  # whether to use subfolder
 
     # File filtering
     exclude_extensions: List[str] = field(default_factory=list)  # exclude file extensions
@@ -99,7 +101,7 @@ class DownloadConfig:
     restart: bool = False  # restart the last download directly
     rewrite_ext: bool = False  # rewrite file extension according to file header MIME
     serve: bool = False  # serve as http server instead of downloading
-    skip_same: bool = False  # skip files with same name and size
+    skip_same: bool = True  # skip files with same name and size (default enabled)
     takeout: bool = False  # use takeout sessions for lower flood wait limits
 
     # Template
@@ -212,7 +214,14 @@ class FullConfig:
             if self.download.desc:
                 args.append("--desc")
 
-            args.extend(["-d", self.download.directory])
+            # Determine final download directory (with optional subfolder)
+            final_directory = self.download.directory
+            if self.download.subfolder_enabled and self.download.subfolder.strip():
+                final_directory = os.path.join(self.download.directory, self.download.subfolder.strip())
+            args.extend(["-d", final_directory])
+
+            if self.download.skip_same:
+                args.append("--skip-same")
 
             if self.download.takeout:
                 args.append("--takeout")
@@ -233,9 +242,6 @@ class FullConfig:
 
             if self.download.group:
                 args.append("--group")
-
-            if self.download.skip_same:
-                args.append("--skip-same")
 
         # Advanced settings
         if self.download.advanced_settings_enabled:
