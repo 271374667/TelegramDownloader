@@ -21,6 +21,9 @@ from .widgets.url_list import URLListWidget
 class DownloadTab(QWidget):
     """Tab for configuring download parameters"""
 
+    # Signal emitted when clipboard monitoring state changes
+    clipboard_monitoring_changed = Signal(bool)
+
     def __init__(self):
         super().__init__()
         self.setup_ui()
@@ -89,6 +92,19 @@ class DownloadTab(QWidget):
         button_layout.addWidget(export_button)
 
         url_layout.addLayout(button_layout)
+
+        # Clipboard monitoring checkbox
+        clipboard_layout = QHBoxLayout()
+        self.clipboard_monitor_checkbox = QCheckBox("📋 Auto-detect URLs from clipboard")
+        self.clipboard_monitor_checkbox.setChecked(True)  # Default enabled
+        self.clipboard_monitor_checkbox.setToolTip(
+            "Automatically detect and add Telegram URLs when copied to clipboard"
+        )
+        self.clipboard_monitor_checkbox.toggled.connect(self.on_clipboard_monitor_toggled)
+        clipboard_layout.addWidget(self.clipboard_monitor_checkbox)
+        clipboard_layout.addStretch()
+
+        url_layout.addLayout(clipboard_layout)
         layout.addWidget(url_group)
 
         return panel
@@ -289,6 +305,17 @@ class DownloadTab(QWidget):
         self.server_settings_group = group
 
         return group
+
+    def on_clipboard_monitor_toggled(self, checked):
+        """Handle clipboard monitoring checkbox toggle"""
+        self.clipboard_monitoring_changed.emit(checked)
+
+    def set_clipboard_monitoring(self, enabled: bool):
+        """Set clipboard monitoring checkbox state (called from main window)"""
+        # Block signals to prevent infinite loop
+        self.clipboard_monitor_checkbox.blockSignals(True)
+        self.clipboard_monitor_checkbox.setChecked(enabled)
+        self.clipboard_monitor_checkbox.blockSignals(False)
 
     def on_subfolder_checkbox_toggled(self, checked):
         """Handle subfolder checkbox toggle"""

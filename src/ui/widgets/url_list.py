@@ -183,19 +183,36 @@ class URLListWidget(QWidget):
         self.edit_button.setEnabled(has_selection)
 
     def validate_url(self, url: str) -> bool:
-        """Validate if the URL is a valid Telegram message URL"""
+        """
+        Validate if the URL is a valid Telegram message URL.
+
+        Supported formats:
+        - https://t.me/telegram/193
+        - https://t.me/c/1697797156/151
+        - https://t.me/iFreeKnow/45662/55005
+        - https://t.me/c/1492447836/251015/251021
+        - https://t.me/opencfdchannel/4434?comment=360409
+        - https://t.me/myhostloc/1485524?thread=1485523
+        """
+        import re
+
         url = url.strip()
 
         # Basic format validation
-        if not url.startswith("https://t.me/"):
+        if not url.startswith("https://t.me/") and not url.startswith("http://t.me/"):
             return False
 
-        # Check if it has at least 2 path components (channel and message)
-        path_parts = url[len("https://t.me/"):].split('/')
-        if len(path_parts) < 2:
-            return False
+        # Regex pattern for Telegram URLs
+        pattern = re.compile(
+            r'^https?://t\.me/'
+            r'(?:c/\d+|[a-zA-Z][\w-]*)'  # Channel: c/123456 or username (must start with letter)
+            r'/\d+'                       # First message ID
+            r'(?:/\d+)*'                 # Optional additional message IDs
+            r'(?:\?(?:comment|thread)=\d+)?$',  # Optional query params
+            re.IGNORECASE
+        )
 
-        return True
+        return bool(pattern.match(url))
 
     def get_urls(self) -> list[str]:
         """Get all URLs from the list"""
