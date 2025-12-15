@@ -1,0 +1,7 @@
+# Telegram Downloader GUI - Requirements
+# PySide6 for GUI framework
+PySide6>=6.5.0
+
+# Additional optional dependencies (uncomment if needed)
+# pillow>=9.0.0  # For image handling in GUI
+# requests>=2.28.0  # For web requests (if needed in future)
