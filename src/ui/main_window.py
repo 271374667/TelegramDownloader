@@ -27,6 +27,7 @@ else:
 
 from .session_tab import SessionTab
 from .download_tab import DownloadTab
+from .floating_panel import FloatingPanel
 from core.config_manager import FullConfig
 from core.batch_generator import BatchGenerator
 from core.clipboard_monitor import ClipboardMonitor
@@ -53,6 +54,8 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setup_status_bar()
         self.setup_system_tray()
+        self.setup_floating_panel()
+        self.setup_keyboard_shortcuts()
 
         # Check for tdl.exe
         self.check_tdl_executable()
@@ -285,6 +288,13 @@ class MainWindow(QMainWindow):
 
         tray_menu.addSeparator()
 
+        # Floating panel toggle
+        self.floating_panel_action = QAction("🎛️ 快捷面板 (Ctrl+Shift+F)", self)
+        self.floating_panel_action.setCheckable(True)
+        self.floating_panel_action.setChecked(True)
+        self.floating_panel_action.triggered.connect(self.on_tray_toggle_floating_panel)
+        tray_menu.addAction(self.floating_panel_action)
+
         # Clipboard monitoring toggle
         self.clipboard_action = QAction("📋 剪贴板监控", self)
         self.clipboard_action.setCheckable(True)
@@ -459,6 +469,8 @@ class MainWindow(QMainWindow):
 
     def show_tray_notification(self, added_count: int, total_count: int):
         """Show tray notification for new URLs with sound"""
+        import threading
+
         # Build notification message
         if added_count == 1:
             message = f"已添加 1 个新链接，当前共 {total_count} 个链接"
@@ -474,24 +486,19 @@ class MainWindow(QMainWindow):
             f"当前链接数: {total_count}"
         )
 
-        # Try winotify first (most reliable on Windows 10/11)
-        if WINOTIFY_AVAILABLE:
-            self._show_winotify_toast(title, message)
-        else:
-            # Fallback to Qt notification + sound
+        # Run notification in separate thread to avoid blocking Qt event loop
+        def show_notification_thread():
+            # Play sound
             self.play_notification_sound()
-            try:
-                if self.tray_icon.isVisible():
-                    self.tray_icon.showMessage(
-                        title,
-                        message,
-                        QSystemTrayIcon.MessageIcon.Information,
-                        5000
-                    )
-            except Exception as e:
-                print(f"Qt tray notification error: {e}")
 
-    def _show_winotify_toast(self, title: str, message: str):
+            # Show notification
+            if WINOTIFY_AVAILABLE:
+                self._show_winotify_toast(title, message)
+
+        thread = threading.Thread(target=show_notification_thread, daemon=True)
+        thread.start()
+
+    def _show_winotify_toast(self, title: str, message: str) -> bool:
         """Show Windows toast notification using winotify library"""
         try:
             toast = Notification(
@@ -500,28 +507,170 @@ class MainWindow(QMainWindow):
                 msg=message,
                 duration="short"
             )
-            # Add notification sound
-            toast.set_audio(audio.Default, loop=False)
-            # Show the notification
             toast.show()
+            return True
         except Exception as e:
             print(f"Winotify notification error: {e}")
-            # Fallback to sound only
-            self.play_notification_sound()
+            return False
 
     def play_notification_sound(self):
         """Play a system notification sound"""
-        try:
-            if platform.system() == "Windows":
-                # Play Windows default notification sound
+        if platform.system() == "Windows":
+            try:
                 winsound.MessageBeep(winsound.MB_ICONASTERISK)
+            except Exception as e:
+                print(f"Sound notification error: {e}")
+
+    def setup_floating_panel(self):
+        """Setup the floating quick action panel"""
+        self.floating_panel = FloatingPanel()
+
+        # Connect floating panel signals
+        self.floating_panel.clear_requested.connect(self.on_floating_clear)
+        self.floating_panel.generate_requested.connect(self.on_floating_generate)
+        self.floating_panel.execute_requested.connect(self.on_floating_execute)
+        self.floating_panel.show_main_requested.connect(self.show_window)
+
+        # Connect URL list changes to update floating panel
+        self.download_tab.url_list.urls_changed.connect(self.update_floating_panel_count)
+
+        # Sync tray menu checkbox when floating panel visibility changes
+        self.floating_panel.close_btn.clicked.connect(
+            lambda: self.floating_panel_action.setChecked(False)
+        )
+
+        # Initial update
+        self.update_floating_panel_count()
+
+        # Show the floating panel
+        self.floating_panel.show()
+
+    def setup_keyboard_shortcuts(self):
+        """Setup global keyboard shortcuts"""
+        from PySide6.QtGui import QShortcut, QKeySequence
+
+        # Ctrl+Shift+F to toggle floating panel
+        self.toggle_panel_shortcut = QShortcut(QKeySequence("Ctrl+Shift+F"), self)
+        self.toggle_panel_shortcut.activated.connect(self.toggle_floating_panel)
+
+    @Slot()
+    def toggle_floating_panel(self):
+        """Toggle the floating panel visibility (from keyboard shortcut)"""
+        if self.floating_panel.isVisible():
+            self.floating_panel.hide()
+            self.status_bar.showMessage("Floating panel hidden (Ctrl+Shift+F to show)")
+        else:
+            self.floating_panel.show()
+            self.floating_panel.raise_()
+            self.status_bar.showMessage("Floating panel shown")
+        # Sync tray menu checkbox
+        self.floating_panel_action.setChecked(self.floating_panel.isVisible())
+
+    @Slot(bool)
+    def on_tray_toggle_floating_panel(self, checked):
+        """Toggle the floating panel visibility (from tray menu)"""
+        if checked:
+            self.floating_panel.show()
+            self.floating_panel.raise_()
+            self.status_bar.showMessage("Floating panel shown")
+        else:
+            self.floating_panel.hide()
+            self.status_bar.showMessage("Floating panel hidden (Ctrl+Shift+F to show)")
+
+    @Slot()
+    def update_floating_panel_count(self):
+        """Update the URL count in the floating panel"""
+        count = len(self.download_tab.url_list.get_urls())
+        self.floating_panel.update_url_count(count)
+
+    @Slot()
+    def on_floating_clear(self):
+        """Handle clear request from floating panel"""
+        self.download_tab.url_list.clear_urls()
+        self.status_bar.showMessage("All URLs cleared")
+        self.update_tray_tooltip()
+
+    @Slot()
+    def on_floating_generate(self):
+        """Handle generate bat request from floating panel"""
+        self.generate_batch_file()
+
+    @Slot()
+    def on_floating_execute(self):
+        """Handle execute request from floating panel - generate and run bat"""
+        import subprocess
+        import os
+
+        try:
+            # Get configuration from tabs
+            self.config.session = self.session_tab.get_session_config()
+            self.config.download = self.download_tab.get_download_config()
+
+            # Validate configuration
+            errors = self.config.validate()
+            if errors:
+                QMessageBox.critical(
+                    self,
+                    "Configuration Errors",
+                    "Please fix the following configuration errors:\n\n" +
+                    "\n".join(f"• {error}" for error in errors)
+                )
+                return
+
+            # Generate batch file with auto_close=True for quick run
+            success, message = self.batch_generator.generate_batch(self.config, auto_close=True)
+
+            if success:
+                self.status_bar.showMessage("Batch file generated, executing...")
+
+                # Get the batch file path
+                batch_path = self.batch_generator.get_batch_file_path()
+
+                # Execute the batch file in a new console window
+                if platform.system() == "Windows":
+                    # Use subprocess to open in a new console window
+                    subprocess.Popen(
+                        ['cmd', '/c', 'start', '', batch_path],
+                        shell=True,
+                        cwd=os.path.dirname(batch_path)
+                    )
+                    self.status_bar.showMessage(f"Executing: {batch_path}")
+                else:
+                    # For non-Windows systems
+                    subprocess.Popen(
+                        ['bash', batch_path],
+                        cwd=os.path.dirname(batch_path)
+                    )
+                    self.status_bar.showMessage(f"Executing: {batch_path}")
+
+                # Clear URLs after successful execution
+                self.download_tab.url_list.clear_urls()
+                self.update_tray_tooltip()
+            else:
+                self.status_bar.showMessage("Failed to generate batch file")
+                QMessageBox.critical(
+                    self,
+                    "Generation Failed",
+                    message
+                )
+
         except Exception as e:
-            print(f"Sound notification error: {e}")
+            error_msg = f"Unexpected error: {str(e)}"
+            self.status_bar.showMessage("Error executing batch file")
+            QMessageBox.critical(
+                self,
+                "Execution Error",
+                error_msg
+            )
 
     def quit_application(self):
         """Quit the application completely"""
         # Stop clipboard monitoring
         self.stop_clipboard_monitoring()
+
+        # Hide floating panel
+        if hasattr(self, 'floating_panel'):
+            self.floating_panel.close()
 
         # Hide tray icon
         self.tray_icon.hide()

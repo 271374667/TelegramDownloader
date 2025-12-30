@@ -162,7 +162,7 @@ class URLListWidget(QWidget):
                     )
 
     def clear_all_urls(self):
-        """Clear all URLs from the list"""
+        """Clear all URLs from the list (with confirmation)"""
         reply = QMessageBox.question(
             self,
             "Clear All URLs",
@@ -172,9 +172,13 @@ class URLListWidget(QWidget):
         )
 
         if reply == QMessageBox.Yes:
-            self.url_list.clear()
-            self.update_status()
-            self.urls_changed.emit()
+            self.clear_urls()
+
+    def clear_urls(self):
+        """Clear all URLs from the list (without confirmation) - used by floating panel"""
+        self.url_list.clear()
+        self.update_status()
+        self.urls_changed.emit()
 
     def on_selection_changed(self):
         """Handle URL list selection change"""
