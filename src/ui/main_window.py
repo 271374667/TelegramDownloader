@@ -9,7 +9,8 @@ import platform
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QPushButton, QTextEdit, QLabel, QMessageBox, QSplitter,
-    QGroupBox, QStatusBar, QSystemTrayIcon, QMenu, QCheckBox
+    QGroupBox, QStatusBar, QSystemTrayIcon, QMenu, QCheckBox,
+    QDialog, QFileDialog
 )
 from PySide6.QtCore import Qt, Slot, QTimer
 from PySide6.QtGui import QFont, QIcon, QAction, QPixmap, QPainter, QColor
@@ -31,6 +32,269 @@ from .floating_panel import FloatingPanel
 from core.config_manager import FullConfig
 from core.batch_generator import BatchGenerator
 from core.clipboard_monitor import ClipboardMonitor
+
+
+class TelegramLoginDialog(QDialog):
+    """Dialog for logging into Telegram using Telegram Desktop data"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Telegram Desktop Login")
+        self.setModal(True)
+        self.setMinimumWidth(550)
+        self.setMinimumHeight(400)
+        self.telegram_path = None
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Setup the dialog UI"""
+        layout = QVBoxLayout(self)
+
+        # Title and description
+        title_label = QLabel("Login with Telegram Desktop")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(title_label)
+
+        desc_label = QLabel(
+            "TDL is not logged in. Please select your Telegram Desktop installation directory.\n\n"
+            "The directory should contain a 'tdata' folder with your Telegram session data.\n"
+            "Common locations:\n"
+            "  • C:\\Users\\YourName\\AppData\\Roaming\\Telegram Desktop\n"
+            "  • Your custom Telegram Desktop installation folder\n\n"
+            "⚠️ Important: Login will open in a new terminal window.\n"
+            "   You need to select your account in the terminal and wait for completion."
+        )
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: #666; margin-bottom: 20px;")
+        layout.addWidget(desc_label)
+
+        # Path selection section
+        path_group = QGroupBox("Telegram Desktop Location")
+        path_layout = QVBoxLayout(path_group)
+
+        # Path display
+        path_row = QHBoxLayout()
+        self.path_label = QLabel("No directory selected")
+        self.path_label.setStyleSheet(
+            "padding: 8px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;"
+        )
+        path_row.addWidget(self.path_label)
+
+        # Browse button
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self.browse_telegram_directory)
+        browse_btn.setMinimumWidth(100)
+        path_row.addWidget(browse_btn)
+
+        path_layout.addLayout(path_row)
+        layout.addWidget(path_group)
+
+        # Instructions section
+        instructions_group = QGroupBox("Login Instructions")
+        instructions_layout = QVBoxLayout(instructions_group)
+
+        instructions_text = QLabel(
+            "1. Click 'Open Login Terminal' to start login\n"
+            "2. A new terminal window will open\n"
+            "3. Use arrow keys to select your account, press Enter\n"
+            "4. ⚠️ IMPORTANT: When asked 'Logout from the official client?'\n"
+            "   → Press N (No) to keep your Telegram Desktop logged in!\n"
+            "5. Wait for 'Login successful' message\n"
+            "6. Close the terminal and click 'Verify Login' below"
+        )
+        instructions_text.setStyleSheet("color: #333; line-height: 1.5;")
+        instructions_layout.addWidget(instructions_text)
+
+        layout.addWidget(instructions_group)
+
+        # Status section
+        self.status_label = QLabel("Select Telegram Desktop directory to begin")
+        self.status_label.setStyleSheet("color: #666; font-style: italic; padding: 10px;")
+        layout.addWidget(self.status_label)
+
+        # Button section
+        button_layout = QHBoxLayout()
+
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_btn)
+
+        button_layout.addStretch()
+
+        self.login_btn = QPushButton("🖥️ Open Login Terminal")
+        self.login_btn.clicked.connect(self.open_login_terminal)
+        self.login_btn.setEnabled(False)
+        self.login_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 20px;
+                font-weight: bold;
+                border-radius: 4px;
+            }
+            QPushButton:hover:enabled {
+                background-color: #1976D2;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+            }
+        """)
+        button_layout.addWidget(self.login_btn)
+
+        self.verify_btn = QPushButton("✅ Verify Login")
+        self.verify_btn.clicked.connect(self.verify_login)
+        self.verify_btn.setEnabled(False)
+        self.verify_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 8px 20px;
+                font-weight: bold;
+                border-radius: 4px;
+            }
+            QPushButton:hover:enabled {
+                background-color: #45a049;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+            }
+        """)
+        button_layout.addWidget(self.verify_btn)
+
+        layout.addLayout(button_layout)
+
+    def browse_telegram_directory(self):
+        """Open directory browser for Telegram Desktop path"""
+        import os
+        default_path = os.path.expandvars(r"%APPDATA%\Telegram Desktop")
+
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Telegram Desktop Directory",
+            default_path if os.path.exists(default_path) else "",
+            QFileDialog.ShowDirsOnly
+        )
+
+        if directory:
+            self.telegram_path = directory
+            self.path_label.setText(directory)
+            self.login_btn.setEnabled(True)
+            self.status_label.setText("Ready - Click 'Open Login Terminal' to start")
+            self.status_label.setStyleSheet("color: #2196F3; font-weight: bold;")
+
+    def open_login_terminal(self):
+        """Open login in a new terminal window"""
+        if not self.telegram_path:
+            QMessageBox.warning(self, "No Directory", "Please select a Telegram Desktop directory first.")
+            return
+
+        # Get parent's batch generator
+        parent = self.parent()
+        if not parent or not hasattr(parent, 'batch_generator'):
+            QMessageBox.critical(self, "Error", "Cannot access batch generator.")
+            return
+
+        # Validate path first
+        valid, message = parent.batch_generator.validate_telegram_path(self.telegram_path)
+        if not valid:
+            QMessageBox.warning(self, "Invalid Path", message)
+            return
+
+        import subprocess
+        import os
+
+        # Get tdl path
+        tdl_path = str(parent.batch_generator.tdl_path)
+
+        # Create a batch script for login
+        batch_content = f'''@echo off
+chcp 65001 >nul
+title TDL Login - Telegram Desktop
+echo ========================================
+echo   TDL Login - Telegram Desktop
+echo ========================================
+echo.
+echo Telegram Desktop path: {self.telegram_path}
+echo.
+echo [Step 1] Use arrow keys to select your account, press Enter
+echo.
+echo [Step 2] IMPORTANT: When asked "Logout from the official client?"
+echo          Press N (No) to keep your Telegram Desktop logged in!
+echo.
+echo ========================================
+echo.
+"{tdl_path}" login -d "{self.telegram_path}"
+echo.
+echo ========================================
+if %errorlevel% equ 0 (
+    echo Login completed successfully!
+    echo You can now close this window and click 'Verify Login'.
+) else (
+    echo Login may have failed. Please check the error above.
+)
+echo ========================================
+echo.
+pause
+'''
+        # Write temp batch file
+        temp_dir = os.environ.get('TEMP', os.getcwd())
+        batch_path = os.path.join(temp_dir, 'tdl_login_temp.bat')
+
+        with open(batch_path, 'w', encoding='utf-8') as f:
+            f.write(batch_content)
+
+        # Open in new terminal window
+        subprocess.Popen(
+            ['cmd', '/c', 'start', 'TDL Login', batch_path],
+            shell=True
+        )
+
+        self.status_label.setText("Terminal opened - Complete login there, then click 'Verify Login'")
+        self.status_label.setStyleSheet("color: #FF9800; font-weight: bold;")
+        self.verify_btn.setEnabled(True)
+
+        QMessageBox.information(
+            self,
+            "Login Terminal Opened",
+            "A new terminal window has been opened for login.\n\n"
+            "1. Use arrow keys to select your account\n"
+            "2. Press Enter to confirm\n"
+            "3. ⚠️ When asked 'Logout from official client?'\n"
+            "   → Press N to keep Telegram Desktop logged in!\n"
+            "4. Wait for 'Login completed successfully'\n"
+            "5. Come back here and click 'Verify Login'"
+        )
+
+    def verify_login(self):
+        """Verify if login was successful"""
+        parent = self.parent()
+        if not parent or not hasattr(parent, 'batch_generator'):
+            QMessageBox.critical(self, "Error", "Cannot access batch generator.")
+            return
+
+        logged_in, message = parent.batch_generator.check_login_status()
+
+        if logged_in:
+            self.status_label.setText("✅ Login verified successfully!")
+            self.status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+            QMessageBox.information(
+                self,
+                "Login Successful",
+                f"Successfully logged into Telegram!\n\n{message}"
+            )
+            self.accept()
+        else:
+            self.status_label.setText("❌ Login not detected - Please try again")
+            self.status_label.setStyleSheet("color: #f44336; font-weight: bold;")
+            QMessageBox.warning(
+                self,
+                "Login Not Verified",
+                f"Login verification failed.\n\n{message}\n\n"
+                "Please make sure you completed the login in the terminal window."
+            )
 
 
 class MainWindow(QMainWindow):
@@ -179,18 +443,86 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Ready")
 
     def check_tdl_executable(self):
-        """Check if tdl.exe exists and show appropriate status"""
+        """Check if tdl.exe exists and is logged in, prompt for login if needed"""
+        # Step 1: Check if tdl.exe exists
         exists, message = self.batch_generator.validate_tdl_executable()
-        if exists:
-            self.status_bar.showMessage("✅ " + message)
-        else:
+
+        if not exists:
+            # tdl.exe not found - show error and exit
             self.status_bar.showMessage("❌ " + message)
-            QMessageBox.warning(
+            QMessageBox.critical(
                 self,
                 "tdl.exe Not Found",
-                "tdl.exe was not found in the bin directory. "
-                "Please ensure tdl.exe is in the 'bin' folder "
-                "for the generated batch file to work properly."
+                "tdl.exe was not found in the bin directory.\n\n"
+                "Please ensure tdl.exe is in the 'bin' folder before running this application.\n\n"
+                f"Expected location: {self.batch_generator.bin_dir / 'tdl.exe'}"
+            )
+            return
+
+        # Step 2: Check login status
+        self.status_bar.showMessage("Checking tdl login status...")
+        logged_in, login_message = self.batch_generator.check_login_status()
+
+        if logged_in:
+            # Successfully logged in
+            self.status_bar.showMessage(f"✅ {login_message}")
+            return
+
+        # Step 3: Not logged in - show login dialog
+        self.status_bar.showMessage("⚠️ Not logged in - Login required")
+
+        reply = QMessageBox.question(
+            self,
+            "Telegram Login Required",
+            "TDL is not logged in to Telegram.\n\n"
+            "Would you like to login now using your Telegram Desktop data?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+
+        if reply == QMessageBox.Yes:
+            # Show login dialog
+            login_dialog = TelegramLoginDialog(self)
+            result = login_dialog.exec()
+
+            if result == QDialog.Accepted:
+                # Login successful - verify
+                logged_in, login_message = self.batch_generator.check_login_status()
+                if logged_in:
+                    self.status_bar.showMessage(f"✅ {login_message}")
+                    QMessageBox.information(
+                        self,
+                        "Login Verified",
+                        f"Successfully logged in!\n\n{login_message}\n\n"
+                        "You can now use TDL to download from Telegram."
+                    )
+                else:
+                    self.status_bar.showMessage("⚠️ Login verification failed")
+                    QMessageBox.warning(
+                        self,
+                        "Login Verification Failed",
+                        "Login appeared successful but verification failed.\n\n"
+                        "Please try again or check tdl.exe manually."
+                    )
+            else:
+                # User cancelled login
+                self.status_bar.showMessage("⚠️ Login cancelled - Some features may not work")
+                QMessageBox.warning(
+                    self,
+                    "Login Cancelled",
+                    "You cancelled the login process.\n\n"
+                    "Note: You need to be logged in to download from Telegram.\n"
+                    "You can manually run 'bin\\tdl.exe login' to login later."
+                )
+        else:
+            # User declined to login
+            self.status_bar.showMessage("⚠️ Not logged in - Manual login required")
+            QMessageBox.information(
+                self,
+                "Manual Login Required",
+                "To login manually, run the following command:\n\n"
+                "bin\\tdl.exe login -d \"C:\\Path\\To\\Telegram Desktop\"\n\n"
+                "Replace the path with your actual Telegram Desktop installation directory."
             )
 
     @Slot()

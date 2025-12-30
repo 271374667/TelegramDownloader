@@ -4,8 +4,9 @@ Generates .bat files based on configuration settings
 """
 
 import os
+import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from .config_manager import FullConfig
 
 
@@ -153,3 +154,63 @@ pause
     def get_batch_file_path(self) -> str:
         """Get the full path where the batch file will be generated"""
         return str(self.current_dir / self.batch_filename)
+
+    def check_login_status(self) -> Tuple[bool, str]:
+        """
+        Check if tdl is logged in by trying to run a simple command.
+        Uses 'tdl version' as a quick test - if session data exists and is valid,
+        we assume logged in.
+
+        Returns:
+            Tuple of (logged_in: bool, message: str)
+            - logged_in: True if logged in successfully
+            - message: Status message or error description
+        """
+        if not self.tdl_path.exists():
+            return False, f"tdl.exe not found at: {self.tdl_path}"
+
+        # Check if session data exists
+        session_path = Path.home() / ".tdl" / "data"
+        if session_path.exists():
+            # Session data exists, check if it has content
+            try:
+                session_files = list(session_path.glob("*"))
+                if session_files:
+                    return True, "Session data found - logged in"
+            except Exception:
+                pass
+
+        return False, "Not logged in - no session data found"
+
+    def validate_telegram_path(self, telegram_path: str) -> Tuple[bool, str]:
+        """
+        Validate Telegram Desktop path before login
+
+        Args:
+            telegram_path: Path to Telegram Desktop installation directory
+
+        Returns:
+            Tuple of (valid: bool, message: str)
+        """
+        telegram_dir = Path(telegram_path)
+        if not telegram_dir.exists():
+            return False, f"Telegram Desktop path does not exist: {telegram_path}"
+
+        # Check for tdata directory (Telegram Desktop data directory)
+        tdata_dir = telegram_dir / "tdata"
+        if not tdata_dir.exists():
+            return False, f"tdata directory not found in: {telegram_path}\nPlease select the Telegram Desktop installation directory."
+
+        return True, "Path valid"
+
+    def get_login_command(self, telegram_path: str) -> List[str]:
+        """
+        Get the login command arguments
+
+        Args:
+            telegram_path: Path to Telegram Desktop installation directory
+
+        Returns:
+            List of command arguments
+        """
+        return [str(self.tdl_path), "login", "-d", str(telegram_path)]
