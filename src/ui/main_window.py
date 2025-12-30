@@ -14,9 +14,16 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Slot, QTimer
 from PySide6.QtGui import QFont, QIcon, QAction, QPixmap, QPainter, QColor
 
-# Windows sound support
+# Windows sound and notification support
 if platform.system() == "Windows":
     import winsound
+    try:
+        from winotify import Notification, audio
+        WINOTIFY_AVAILABLE = True
+    except ImportError:
+        WINOTIFY_AVAILABLE = False
+else:
+    WINOTIFY_AVAILABLE = False
 
 from .session_tab import SessionTab
 from .download_tab import DownloadTab
@@ -451,97 +458,62 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f"📋 从剪贴板添加了 {added_count} 个链接，当前共 {total_count} 个")
 
     def show_tray_notification(self, added_count: int, total_count: int):
-        """Show tray notification balloon for new URLs with sound"""
-        # Play notification sound on Windows
-        self.play_notification_sound()
-
+        """Show tray notification for new URLs with sound"""
         # Build notification message
         if added_count == 1:
-            message = f"已添加 1 个新链接\n当前共 {total_count} 个链接"
+            message = f"已添加 1 个新链接，当前共 {total_count} 个链接"
         else:
-            message = f"已添加 {added_count} 个新链接\n当前共 {total_count} 个链接"
+            message = f"已添加 {added_count} 个新链接，当前共 {total_count} 个链接"
 
-        # Use plain text title
         title = "TDL - 检测到新链接"
 
-        # Update tooltip first
+        # Update tooltip
         self.tray_icon.setToolTip(
             f"[NEW!] Telegram Downloader\n"
             f"刚添加 {added_count} 个新链接!\n"
             f"当前链接数: {total_count}"
         )
 
-        # Store notification data for delayed display
-        self._pending_notification = (title, message)
+        # Try winotify first (most reliable on Windows 10/11)
+        if WINOTIFY_AVAILABLE:
+            self._show_winotify_toast(title, message)
+        else:
+            # Fallback to Qt notification + sound
+            self.play_notification_sound()
+            try:
+                if self.tray_icon.isVisible():
+                    self.tray_icon.showMessage(
+                        title,
+                        message,
+                        QSystemTrayIcon.MessageIcon.Information,
+                        5000
+                    )
+            except Exception as e:
+                print(f"Qt tray notification error: {e}")
 
-        # Use delayed notification to ensure tray icon is ready
-        QTimer.singleShot(100, self._show_delayed_notification)
-
-    def _show_delayed_notification(self):
-        """Show the pending notification after a short delay"""
-        if not hasattr(self, '_pending_notification') or not self._pending_notification:
-            return
-
-        title, message = self._pending_notification
-        self._pending_notification = None
-
-        # Try Qt tray notification first
+    def _show_winotify_toast(self, title: str, message: str):
+        """Show Windows toast notification using winotify library"""
         try:
-            if self.tray_icon.isVisible() and QSystemTrayIcon.supportsMessages():
-                self.tray_icon.showMessage(
-                    title,
-                    message,
-                    QSystemTrayIcon.MessageIcon.Information,
-                    5000
-                )
-        except Exception as e:
-            print(f"Qt tray notification error: {e}")
-
-        # Also try Windows native toast notification as backup
-        if platform.system() == "Windows":
-            self._show_windows_toast(title, message)
-
-    def _show_windows_toast(self, title: str, message: str):
-        """Show Windows toast notification using PowerShell"""
-        try:
-            import subprocess
-            # Use PowerShell to show a toast notification
-            ps_script = f'''
-            [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-            [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-            $template = @"
-            <toast>
-                <visual>
-                    <binding template="ToastText02">
-                        <text id="1">{title}</text>
-                        <text id="2">{message.replace(chr(10), " ")}</text>
-                    </binding>
-                </visual>
-                <audio src="ms-winsoundevent:Notification.Default"/>
-            </toast>
-"@
-            $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-            $xml.LoadXml($template)
-            $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-            [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("TDL").Show($toast)
-            '''
-            # Run in background without waiting
-            subprocess.Popen(
-                ['powershell', '-ExecutionPolicy', 'Bypass', '-Command', ps_script],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+            toast = Notification(
+                app_id="Telegram Downloader",
+                title=title,
+                msg=message,
+                duration="short"
             )
+            # Add notification sound
+            toast.set_audio(audio.Default, loop=False)
+            # Show the notification
+            toast.show()
         except Exception as e:
-            # Silently fail - the sound notification is the main feedback
-            pass
+            print(f"Winotify notification error: {e}")
+            # Fallback to sound only
+            self.play_notification_sound()
 
     def play_notification_sound(self):
         """Play a system notification sound"""
         try:
             if platform.system() == "Windows":
                 # Play Windows default notification sound
-                # MB_ICONASTERISK = Information sound
                 winsound.MessageBeep(winsound.MB_ICONASTERISK)
         except Exception as e:
             print(f"Sound notification error: {e}")
