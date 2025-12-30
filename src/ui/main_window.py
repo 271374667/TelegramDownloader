@@ -614,21 +614,21 @@ class MainWindow(QMainWindow):
         tray_menu = QMenu()
 
         # Show/Hide action
-        self.show_action = QAction("显示主窗口", self)
+        self.show_action = QAction("Show Main Window", self)
         self.show_action.triggered.connect(self.show_window)
         tray_menu.addAction(self.show_action)
 
         tray_menu.addSeparator()
 
         # Floating panel toggle
-        self.floating_panel_action = QAction("🎛️ 快捷面板 (Ctrl+Shift+F)", self)
+        self.floating_panel_action = QAction("🎛️ Quick Panel (Ctrl+Shift+F)", self)
         self.floating_panel_action.setCheckable(True)
         self.floating_panel_action.setChecked(True)
         self.floating_panel_action.triggered.connect(self.on_tray_toggle_floating_panel)
         tray_menu.addAction(self.floating_panel_action)
 
         # Clipboard monitoring toggle
-        self.clipboard_action = QAction("📋 剪贴板监控", self)
+        self.clipboard_action = QAction("📋 Clipboard Monitoring", self)
         self.clipboard_action.setCheckable(True)
         self.clipboard_action.setChecked(True)
         self.clipboard_action.triggered.connect(self.toggle_clipboard_monitoring)
@@ -637,14 +637,14 @@ class MainWindow(QMainWindow):
         tray_menu.addSeparator()
 
         # URL count display
-        self.url_count_action = QAction("📥 当前链接: 0", self)
+        self.url_count_action = QAction("📥 URLs: 0", self)
         self.url_count_action.setEnabled(False)
         tray_menu.addAction(self.url_count_action)
 
         tray_menu.addSeparator()
 
         # Exit action
-        exit_action = QAction("退出", self)
+        exit_action = QAction("Exit", self)
         exit_action.triggered.connect(self.quit_application)
         tray_menu.addAction(exit_action)
 
@@ -689,14 +689,14 @@ class MainWindow(QMainWindow):
     def update_tray_tooltip(self):
         """Update the tray icon tooltip"""
         url_count = len(self.download_tab.url_list.get_urls())
-        monitoring_status = "开启" if self.clipboard_monitoring_enabled else "关闭"
+        monitoring_status = "On" if self.clipboard_monitoring_enabled else "Off"
         self.tray_icon.setToolTip(
             f"Telegram Downloader\n"
-            f"当前链接数: {url_count}\n"
-            f"剪贴板监控: {monitoring_status}"
+            f"URLs: {url_count}\n"
+            f"Clipboard Monitoring: {monitoring_status}"
         )
         # Update menu item
-        self.url_count_action.setText(f"📥 当前链接: {url_count}")
+        self.url_count_action.setText(f"📥 URLs: {url_count}")
 
     def on_tray_activated(self, reason):
         """Handle tray icon activation"""
@@ -721,10 +721,10 @@ class MainWindow(QMainWindow):
         self.clipboard_monitoring_enabled = checked
         if checked:
             self.start_clipboard_monitoring()
-            self.status_bar.showMessage("📋 剪贴板监控已开启")
+            self.status_bar.showMessage("📋 Clipboard monitoring enabled")
         else:
             self.stop_clipboard_monitoring()
-            self.status_bar.showMessage("📋 剪贴板监控已关闭")
+            self.status_bar.showMessage("📋 Clipboard monitoring disabled")
         self.update_tray_tooltip()
         # Sync with download tab checkbox
         self.download_tab.set_clipboard_monitoring(checked)
@@ -735,10 +735,10 @@ class MainWindow(QMainWindow):
         self.clipboard_monitoring_enabled = checked
         if checked:
             self.start_clipboard_monitoring()
-            self.status_bar.showMessage("📋 剪贴板监控已开启")
+            self.status_bar.showMessage("📋 Clipboard monitoring enabled")
         else:
             self.stop_clipboard_monitoring()
-            self.status_bar.showMessage("📋 剪贴板监控已关闭")
+            self.status_bar.showMessage("📋 Clipboard monitoring disabled")
         self.update_tray_tooltip()
         # Sync with tray menu checkbox
         self.clipboard_action.setChecked(checked)
@@ -797,7 +797,7 @@ class MainWindow(QMainWindow):
             self.show_tray_notification(added_count, total_count)
 
             # Update status bar
-            self.status_bar.showMessage(f"📋 从剪贴板添加了 {added_count} 个链接，当前共 {total_count} 个")
+            self.status_bar.showMessage(f"📋 Added {added_count} URLs from clipboard, total: {total_count}")
 
     def show_tray_notification(self, added_count: int, total_count: int):
         """Show tray notification for new URLs with sound"""
@@ -805,17 +805,17 @@ class MainWindow(QMainWindow):
 
         # Build notification message
         if added_count == 1:
-            message = f"已添加 1 个新链接，当前共 {total_count} 个链接"
+            message = f"Added 1 new URL, total: {total_count}"
         else:
-            message = f"已添加 {added_count} 个新链接，当前共 {total_count} 个链接"
+            message = f"Added {added_count} new URLs, total: {total_count}"
 
-        title = "TDL - 检测到新链接"
+        title = "TDL - New URLs Detected"
 
         # Update tooltip
         self.tray_icon.setToolTip(
             f"[NEW!] Telegram Downloader\n"
-            f"刚添加 {added_count} 个新链接!\n"
-            f"当前链接数: {total_count}"
+            f"Just added {added_count} new URLs!\n"
+            f"Total URLs: {total_count}"
         )
 
         # Run notification in separate thread to avoid blocking Qt event loop
@@ -1019,7 +1019,7 @@ class MainWindow(QMainWindow):
             if QSystemTrayIcon.supportsMessages():
                 self.tray_icon.showMessage(
                     "Telegram Downloader",
-                    "程序已最小化到系统托盘\n剪贴板监控继续运行中",
+                    "Minimized to system tray\nClipboard monitoring continues",
                     QSystemTrayIcon.MessageIcon.Information,
                     2000
                 )
