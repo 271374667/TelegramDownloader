@@ -4,6 +4,8 @@
 
 为 [TDL (Telegram Downloader)](https://github.com/iyear/tdl) 打造的现代化、用户友好的图形界面，让 Telegram 文件下载变得更加简单。
 
+> **✨ 突破限制下载** - 支持下载被限制转发/保存的频道文件和视频，无视 Telegram 的下载限制！
+
 下面是下载窗口的预览:
 
 ![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)

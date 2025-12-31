@@ -4,6 +4,8 @@
 
 A modern, user-friendly graphical interface for [TDL (Telegram Downloader)](https://github.com/iyear/tdl), making it easier to download files from Telegram channels and chats.
 
+> **✨ Bypass Download Restrictions** - Download files and videos from restricted channels that block forwarding/saving. No more Telegram download limitations!
+
 Preview of the download window:
 
 ![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)
