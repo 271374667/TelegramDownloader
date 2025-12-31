@@ -4,6 +4,14 @@
 
 A modern, user-friendly graphical interface for [TDL (Telegram Downloader)](https://github.com/iyear/tdl), making it easier to download files from Telegram channels and chats.
 
+Preview of the download window:
+
+![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)
+
+Preview of the floating panel:
+
+![FloatPanelPreview](PixPin_2025-12-31_10-04-10.png)
+
 ## Features
 
 ### Core Functionality
@@ -36,13 +44,23 @@ A modern, user-friendly graphical interface for [TDL (Telegram Downloader)](http
 
 ## Installation
 
-### 1. Clone Repository
+### Method 1: Download Release (Recommended)
+
+1. Go to the [Releases](../../releases) page of this repository
+2. Download the latest version archive
+3. Extract to any directory
+4. Download [tdl.exe](https://github.com/iyear/tdl/releases) and place it in the `bin/` directory
+5. Run `TDL-GUI.exe` or `run.bat`
+
+### Method 2: Run from Source
+
+#### 1. Clone Repository
 ```bash
 git clone https://github.com/yourusername/TDL-GUI.git
 cd TDL-GUI
 ```
 
-### 2. Install Dependencies
+#### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -51,7 +69,7 @@ Required packages:
 - PySide6 >= 6.5.0 (GUI framework)
 - winotify >= 1.1.0 (Windows notifications)
 
-### 3. Setup TDL Executable
+#### 3. Setup TDL Executable
 Download [tdl.exe](https://github.com/iyear/tdl/releases) and place it in the `bin/` directory:
 ```
 TDL-GUI/
@@ -62,7 +80,7 @@ TDL-GUI/
 └── requirements.txt
 ```
 
-### 4. Run Application
+#### 4. Run Application
 ```bash
 python run.py
 ```

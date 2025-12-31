@@ -4,6 +4,14 @@
 
 为 [TDL (Telegram Downloader)](https://github.com/iyear/tdl) 打造的现代化、用户友好的图形界面，让 Telegram 文件下载变得更加简单。
 
+下面是下载窗口的预览:
+
+![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)
+
+下面是悬浮置顶窗口的预览
+
+![FloatPanelPreview](PixPin_2025-12-31_10-04-10.png)
+
 ## 功能特性
 
 ### 核心功能
@@ -36,13 +44,23 @@
 
 ## 安装步骤
 
-### 1. 克隆仓库
+### 方法一：下载 Release（推荐）
+
+1. 前往本仓库的 [Releases](../../releases) 页面
+2. 下载最新版本的压缩包
+3. 解压到任意目录
+4. 下载 [tdl.exe](https://github.com/iyear/tdl/releases) 并放置到 `bin/` 目录
+5. 运行 `TDL-GUI.exe` 或 `run.bat`
+
+### 方法二：从源码运行
+
+#### 1. 克隆仓库
 ```bash
 git clone https://github.com/yourusername/TDL-GUI.git
 cd TDL-GUI
 ```
 
-### 2. 安装依赖
+#### 2. 安装依赖
 ```bash
 pip install -r requirements.txt
 ```
@@ -51,7 +69,7 @@ pip install -r requirements.txt
 - PySide6 >= 6.5.0（GUI 框架）
 - winotify >= 1.1.0（Windows 通知）
 
-### 3. 配置 TDL 可执行文件
+#### 3. 配置 TDL 可执行文件
 下载 [tdl.exe](https://github.com/iyear/tdl/releases) 并放置到 `bin/` 目录：
 ```
 TDL-GUI/
@@ -62,7 +80,7 @@ TDL-GUI/
 └── requirements.txt
 ```
 
-### 4. 运行程序
+#### 4. 运行程序
 ```bash
 python run.py
 ```
@@ -95,18 +113,18 @@ python run.py
 ### 基本工作流程
 
 #### 方法 1：剪贴板监控（推荐）
-1. 在下载配置标签页中启用 **剪贴板监控** 复选框
-2. 复制任何 Telegram 链接（Ctrl+C）
+1. 在下载配置标签页中启用 **clipboard monitoring** 复选框
+2. 复制任何 Telegram 链接（Ctrl+C）或者右键复制链接
 3. 链接自动出现在 URL 列表中
 4. 配置下载选项
-5. 点击 **生成批处理文件** 或使用悬浮面板的 **运行** 按钮
+5. 点击 **Generate Batch File** 或使用悬浮面板的 **Run** 按钮
 
 #### 方法 2：手动输入链接
-1. 导航到 **下载配置** 标签页
+1. 导航到 **Download Configuration** 标签页
 2. 在 URL 列表中粘贴链接（每行一个或逗号分隔）
-3. 点击 **添加链接**
+3. 点击 **add**
 4. 配置下载选项
-5. 点击 **生成批处理文件**
+5. 点击 ***Generate Batch File**
 
 ### 下载配置选项
 
