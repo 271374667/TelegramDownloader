@@ -484,9 +484,14 @@ def copy_dependencies():
     # For --onedir mode, output is in dist/APP_NAME/
     dist_app_dir = DIST_DIR / APP_NAME
 
-    # Copy bin folder (contains tdl.exe)
+    # PyInstaller places dependencies in _internal folder
+    internal_dir = dist_app_dir / "_internal"
+    if not internal_dir.exists():
+        internal_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy bin folder (contains tdl.exe) to _internal
     bin_src = PROJECT_ROOT / "bin"
-    bin_dst = dist_app_dir / "bin"
+    bin_dst = internal_dir / "bin"
     if bin_src.exists():
         if bin_dst.exists():
             shutil.rmtree(bin_dst)
@@ -496,8 +501,8 @@ def copy_dependencies():
         print("  Warning: bin/ folder not found, creating empty folder")
         bin_dst.mkdir(parents=True, exist_ok=True)
 
-    # Copy downloads folder structure (empty)
-    downloads_dst = dist_app_dir / "downloads"
+    # Copy downloads folder structure (empty) to _internal
+    downloads_dst = internal_dir / "downloads"
     downloads_dst.mkdir(parents=True, exist_ok=True)
     print(f"  Created: {downloads_dst}")
 
@@ -507,7 +512,7 @@ def copy_dependencies():
 Telegram Downloader GUI - A graphical interface for tdl
 
 ## Usage
-1. Place tdl.exe in the 'bin' folder
+1. Place tdl.exe in the '_internal/bin' folder
 2. Run {APP_NAME}.exe
 3. Configure your session and download settings
 4. Add Telegram URLs and generate/run batch files
@@ -521,7 +526,7 @@ Telegram Downloader GUI - A graphical interface for tdl
 
 ## Requirements
 - Windows 10/11
-- tdl.exe in the bin folder
+- tdl.exe in the _internal/bin folder
 
 ## Keyboard Shortcuts
 - Ctrl+Shift+F: Toggle floating panel
@@ -562,8 +567,9 @@ def print_success(builder: str):
             print("⚠️ Package size is large, check if all exclusions are working")
 
     dist_app_dir = DIST_DIR / APP_NAME  # Define again for print statements
+    internal_dir = dist_app_dir / "_internal"
     print(f"\nTo run the application:")
-    print(f"  1. Ensure tdl.exe is in {dist_app_dir / 'bin'}")
+    print(f"  1. Ensure tdl.exe is in {internal_dir / 'bin'}")
     print(f"  2. Run {dist_app_dir / f'{APP_NAME}.exe'}")
 
 
