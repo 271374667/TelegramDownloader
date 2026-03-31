@@ -37,13 +37,18 @@ Rectangle {
         // Preview box
         Rectangle {
             width: parent.width
-            height: Math.min(Math.max(previewText.implicitHeight + 16, 40), 80)
+            height: Math.min(Math.max(previewText.implicitHeight + 16, 40), 120)
             color: Theme.Theme.inputBackground
             radius: Theme.Theme.radiusSmall
             border.width: 1
             border.color: Theme.Theme.cardBorder
 
+            Behavior on height {
+                NumberAnimation { duration: Theme.Theme.animNormal }
+            }
+
             Flickable {
+                id: previewFlickable
                 anchors.fill: parent
                 anchors.margins: 8
                 contentWidth: previewText.implicitWidth
@@ -53,7 +58,7 @@ Rectangle {
 
                 TextEdit {
                     id: previewText
-                    width: parent.width
+                    width: previewFlickable.width
                     text: appVM.commandPreview || "配置完成后将在此预览命令..."
                     font.pixelSize: 12
                     font.family: Theme.Theme.fontFamilyMono
@@ -62,6 +67,26 @@ Rectangle {
                     selectByMouse: true
                     wrapMode: Text.WrapAnywhere
                     selectionColor: Theme.Theme.accentDark
+
+                    onTextChanged: {
+                        // Brief flash effect to indicate the preview changed
+                        flashAnim.restart()
+                    }
+                }
+            }
+
+            // Subtle flash overlay to indicate preview updated
+            Rectangle {
+                id: flashOverlay
+                anchors.fill: parent
+                radius: parent.radius
+                color: Theme.Theme.accent
+                opacity: 0
+
+                SequentialAnimation {
+                    id: flashAnim
+                    NumberAnimation { target: flashOverlay; property: "opacity"; to: 0.08; duration: 80 }
+                    NumberAnimation { target: flashOverlay; property: "opacity"; to: 0; duration: 300 }
                 }
             }
         }

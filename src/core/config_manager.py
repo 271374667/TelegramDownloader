@@ -226,6 +226,15 @@ class FullConfig:
             if self.download.takeout:
                 args.append("--takeout")
 
+            if self.download.group:
+                args.append("--group")
+
+            if self.download.restart:
+                args.append("--restart")
+
+            if self.download.rewrite_ext:
+                args.append("--rewrite-ext")
+
         # File filtering
         if self.download.file_filtering_enabled:
             for ext in self.download.exclude_extensions:
@@ -240,17 +249,8 @@ class FullConfig:
                 if file_path.strip():
                     args.extend(["-f", file_path.strip()])
 
-            if self.download.group:
-                args.append("--group")
-
         # Advanced settings
         if self.download.advanced_settings_enabled:
-            if self.download.restart:
-                args.append("--restart")
-
-            if self.download.rewrite_ext:
-                args.append("--rewrite-ext")
-
             if self.download.template != "{{ .DialogID }}_{{ .MessageID }}_{{ filenamify .FileName }}":
                 args.extend(["--template", self.download.template])
 
