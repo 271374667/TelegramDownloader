@@ -1,8 +1,13 @@
 """Application-level ViewModel – orchestrates core services and sub-VMs."""
 
+import io
+import math
 import os
+import struct
 import subprocess
 import tempfile
+import time
+import wave
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 
 from core.config_manager import FullConfig
@@ -40,6 +45,8 @@ class AppViewModel(QObject):
         self._floating_panel_visible = True
         self._clipboard_monitoring = True
         self._tdl_status = ""  # "ready" | "no_tdl" | "not_logged_in"
+        self._last_alert_sound_at = 0.0
+        self._alert_sound_data = self._build_alert_sound_data()
 
         # Core services
         self._batch = BatchGenerator()
@@ -163,18 +170,63 @@ class AppViewModel(QObject):
     # ── Clipboard ───────────────────────────────────────────────────
 
     def _on_new_urls(self, urls: list):
+        added_count = 0
         for url in urls:
-            self._url_model.addUrl(url)
-        if urls:
-            n = len(urls)
+            if self._url_model.addUrl(url):
+                added_count += 1
+        if added_count > 0:
+            self._play_link_detected_sound()
             self.notificationRequested.emit(
                 "剪贴板",
-                f"检测到 {n} 个新链接",
+                f"检测到 {added_count} 个新链接",
                 "info",
             )
 
     def _sync_clipboard_urls(self):
         self._clipboard.sync_known_urls(self._url_model.get_urls())
+
+    def _play_link_detected_sound(self):
+        now = time.monotonic()
+        if now - self._last_alert_sound_at < 0.9:
+            return
+        self._last_alert_sound_at = now
+
+        try:
+            import winsound
+            winsound.PlaySound(
+                self._alert_sound_data,
+                winsound.SND_MEMORY | winsound.SND_ASYNC,
+            )
+        except Exception:
+            pass
+
+    def _build_alert_sound_data(self) -> bytes:
+        sample_rate = 22050
+        duration_s = 0.11
+        frequency = 1046.5
+        frame_count = int(sample_rate * duration_s)
+        amplitude = 0.28
+        fade_samples = max(1, int(sample_rate * 0.012))
+
+        pcm_frames = bytearray()
+        for i in range(frame_count):
+            envelope = 1.0
+            if i < fade_samples:
+                envelope = i / fade_samples
+            elif i > frame_count - fade_samples:
+                envelope = max(0.0, (frame_count - i) / fade_samples)
+
+            sample = math.sin(2.0 * math.pi * frequency * (i / sample_rate))
+            value = int(32767 * amplitude * envelope * sample)
+            pcm_frames.extend(struct.pack("<h", value))
+
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(bytes(pcm_frames))
+        return buffer.getvalue()
 
     # ── Internal ────────────────────────────────────────────────────
 

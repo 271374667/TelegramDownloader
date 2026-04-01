@@ -15,6 +15,99 @@ Item {
     signal closeRequested()
 
     property int urlCount: 0
+    property int previousUrlCount: 0
+    property int recentIncrease: 0
+    property bool initialized: false
+    property real flashOpacity: 0.0
+    property real glowOpacity: 0.0
+    property real countPulseScale: 1.0
+
+    function withAlpha(color, alpha) {
+        return Qt.rgba(color.r, color.g, color.b, alpha);
+    }
+
+    function triggerNewUrlCue(diff) {
+        root.recentIncrease = diff;
+        recentBadgeTimer.restart();
+        cueAnim.restart();
+    }
+
+    onUrlCountChanged: {
+        if (!initialized)
+            return;
+
+        var diff = urlCount - previousUrlCount;
+        if (diff > 0)
+            triggerNewUrlCue(diff);
+
+        previousUrlCount = urlCount;
+    }
+
+    Component.onCompleted: {
+        previousUrlCount = urlCount;
+        initialized = true;
+    }
+
+    Timer {
+        id: recentBadgeTimer
+        interval: 2200
+        onTriggered: root.recentIncrease = 0
+    }
+
+    SequentialAnimation {
+        id: cueAnim
+
+        ParallelAnimation {
+            NumberAnimation {
+                target: root
+                property: "flashOpacity"
+                from: 0.0
+                to: 0.18
+                duration: 100
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: root
+                property: "glowOpacity"
+                from: 0.0
+                to: 1.0
+                duration: 100
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: root
+                property: "countPulseScale"
+                from: 1.0
+                to: 1.18
+                duration: 120
+                easing.type: Easing.OutBack
+            }
+        }
+
+        ParallelAnimation {
+            NumberAnimation {
+                target: root
+                property: "flashOpacity"
+                to: 0.0
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: root
+                property: "countPulseScale"
+                to: 1.0
+                duration: 260
+                easing.type: Easing.OutBack
+            }
+            NumberAnimation {
+                target: root
+                property: "glowOpacity"
+                to: 0.0
+                duration: 650
+                easing.type: Easing.OutCubic
+            }
+        }
+    }
 
     // The actual floating window
     Window {
@@ -32,26 +125,37 @@ Item {
         }
 
         Rectangle {
+            anchors.fill: parent
+            radius: Theme.Theme.radiusLarge + 1
+            color: "transparent"
+            border.width: 1
+            border.color: root.withAlpha(Theme.Theme.accentLight, 0.95)
+            opacity: root.glowOpacity
+        }
+
+        Rectangle {
             id: panelContent
             anchors.fill: parent
             radius: Theme.Theme.radiusLarge
             color: Theme.Theme.dark ? "#E6202020" : "#E6F3F3F3"
             border.width: 1
-            border.color: Theme.Theme.cardBorder
+            border.color: root.recentIncrease > 0 ? Theme.Theme.accentLight : Theme.Theme.cardBorder
             implicitWidth: panelRow.implicitWidth + 20
             implicitHeight: 44
+
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: root.withAlpha(Theme.Theme.accent, root.flashOpacity)
+            }
 
             // Drag handling
             MouseArea {
                 id: dragArea
                 anchors.fill: parent
-                property point startPos
-                onPressed: (mouse) => startPos = Qt.point(mouse.x, mouse.y)
-                onPositionChanged: (mouse) => {
-                    if (pressed) {
-                        panelWindow.x += mouse.x - startPos.x;
-                        panelWindow.y += mouse.y - startPos.y;
-                    }
+                onPressed: (mouse) => {
+                    if (mouse.button === Qt.LeftButton)
+                        panelWindow.startSystemMove()
                 }
                 onDoubleClicked: root.showMainRequested()
                 z: -1
@@ -80,12 +184,23 @@ Item {
                 }
 
                 // URL count
-                Text {
-                    text: root.urlCount + " 链接"
-                    font.pixelSize: 12
-                    font.family: Theme.Theme.fontFamily
-                    color: root.urlCount > 0 ? Theme.Theme.textPrimary : Theme.Theme.textDisabled
+                Item {
+                    width: countText.implicitWidth
+                    height: 20
+                    scale: root.countPulseScale
+                    transformOrigin: Item.Center
                     anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        id: countText
+                        anchors.centerIn: parent
+                        text: root.urlCount + " 链接"
+                        font.pixelSize: 12
+                        font.family: Theme.Theme.fontFamily
+                        color: root.recentIncrease > 0
+                            ? Theme.Theme.accentLight
+                            : (root.urlCount > 0 ? Theme.Theme.textPrimary : Theme.Theme.textDisabled)
+                    }
                 }
 
                 Rectangle { width: 1; height: 20; color: Theme.Theme.divider; anchors.verticalCenter: parent.verticalCenter }
