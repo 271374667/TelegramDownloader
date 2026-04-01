@@ -16,6 +16,7 @@ ApplicationWindow {
     minimumHeight: 520
     title: "TDL - Telegram Downloader"
     color: Theme.Theme.background
+    flags: Qt.FramelessWindowHint | Qt.Window
 
     // ── Load bundled fonts into QML engine ─────────────────────────
     FontLoader { source: "Fonts/SourceHanSansSC-Regular.otf" }
@@ -73,9 +74,22 @@ ApplicationWindow {
         onActivated: appVM.toggleFloatingPanel()
     }
 
-    // ── Main Layout ────────────────────────────────────────────────
+    // ── Custom Title Bar ───────────────────────────────────────
+    FluentTitleBar {
+        id: titleBar
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: barHeight
+        appName: "TDL - Telegram Downloader"
+    }
+
+    // ── Main Layout ────────────────────────────────────────────
     RowLayout {
-        anchors.fill: parent
+        anchors.top: titleBar.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         spacing: 0
 
         // ── Navigation Sidebar ─────────────────────────────────────
@@ -341,7 +355,7 @@ ApplicationWindow {
     // ── InfoBar (notifications) ────────────────────────────────────
     FluentInfoBar {
         id: infoBar
-        anchors.top: parent.top; anchors.topMargin: 8
+        anchors.top: titleBar.bottom; anchors.topMargin: 8
         anchors.right: parent.right; anchors.rightMargin: 8
         anchors.left: parent.left; anchors.leftMargin: 190  // offset for sidebar
         z: 100
