@@ -29,11 +29,18 @@ SPEC_DIR = PROJECT_ROOT
 # PySide6 Module Optimization
 # ============================================================
 
-# Modules actually used by this project (QtWidgets, QtCore, QtGui only)
+# Modules actually used by this project
 PYSIDE6_REQUIRED_MODULES = [
     "PySide6.QtWidgets",
     "PySide6.QtCore",
     "PySide6.QtGui",
+    "PySide6.QtQml",
+    "PySide6.QtQmlModels",
+    "PySide6.QtQmlCore",
+    "PySide6.QtQuick",
+    "PySide6.QtQuickControls2",
+    "PySide6.QtQuickWidgets",
+    "PySide6.QtNetwork",
 ]
 
 # Large modules to exclude (saves ~200-500MB)
@@ -58,13 +65,13 @@ PYSIDE6_EXCLUDE_MODULES = [
     "PySide6.QtMultimedia",
     "PySide6.QtMultimediaWidgets",
 
-    # Quick/QML (~40MB+)
-    "PySide6.QtQuick",
-    "PySide6.QtQuickWidgets",
-    "PySide6.QtQuickControls2",
-    "PySide6.QtQml",
-    "PySide6.QtQmlModels",
-    "PySide6.QtQmlCore",
+    # Quick/QML - USED by this project, do not exclude
+    # "PySide6.QtQuick",
+    # "PySide6.QtQuickWidgets",
+    # "PySide6.QtQuickControls2",
+    # "PySide6.QtQml",
+    # "PySide6.QtQmlModels",
+    # "PySide6.QtQmlCore",
 
     # Data visualization (~20MB+)
     "PySide6.QtCharts",
@@ -87,7 +94,7 @@ PYSIDE6_EXCLUDE_MODULES = [
     "PySide6.QtXml",
     "PySide6.QtSvg",
     "PySide6.QtSvgWidgets",
-    "PySide6.QtNetwork",
+    # "PySide6.QtNetwork",  # needed by QtQml at runtime
     "PySide6.QtNetworkAuth",
     "PySide6.QtPositioning",
     "PySide6.QtLocation",
@@ -230,6 +237,17 @@ def build_with_pyinstaller(use_upx: bool = True):
     # Hidden imports - only what's actually needed
     for module in PYSIDE6_REQUIRED_MODULES:
         cmd.extend(["--hidden-import", module])
+
+    # QML engine support
+    cmd.extend([
+        "--hidden-import", "PySide6.QtQml",
+        "--hidden-import", "PySide6.QtQuick",
+        "--hidden-import", "PySide6.QtQuickControls2",
+        "--hidden-import", "PySide6.QtNetwork",
+    ])
+
+    # Include QML source files
+    cmd.extend(["--add-data", f"src/qml{os.pathsep}src/qml"])
 
     # Additional hidden imports for winotify
     cmd.extend([
@@ -394,7 +412,7 @@ def build_with_nuitka(standalone: bool = True, onefile: bool = True):
         "PySide6.QtHelp",
         "PySide6.QtSql",
         "PySide6.QtTest",
-        "PySide6.QtNetwork*",
+        "PySide6.QtNetworkAuth",   # only exclude auth, not QtNetwork itself
         "PySide6.QtSvg*",
         "PySide6.QtBluetooth",
         "PySide6.QtNfc",
@@ -411,6 +429,9 @@ def build_with_nuitka(standalone: bool = True, onefile: bool = True):
         "PySide6.QtHttpServer",
     ]
 
+    # Remove QML-related patterns since this project uses them
+    qt_nofollow_patterns = [p for p in qt_nofollow_patterns
+                            if not any(kw in p for kw in ["QtQml", "QtQuick"])]
     for pattern in qt_nofollow_patterns:
         cmd.append(f"--nofollow-import-to={pattern}")
 
