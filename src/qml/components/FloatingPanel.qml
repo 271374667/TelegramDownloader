@@ -157,7 +157,7 @@ Item {
             font.pixelSize: 11
             font.family: Theme.Theme.fontFamily
             font.weight: Font.DemiBold
-            color: Theme.Theme.textOnAccent
+            color: parent.enabled ? "#FFFFFF" : Theme.Theme.textDisabled
         }
 
         MouseArea {
