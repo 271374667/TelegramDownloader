@@ -15,14 +15,10 @@ Rectangle {
     width: parent ? parent.width : 400
     height: 44
     radius: Theme.Theme.radiusSmall
-    color: {
-        switch (severity) {
-            case "success": return Qt.rgba(0.06, 0.48, 0.06, 0.15);
-            case "warning": return Qt.rgba(0.62, 0.36, 0, 0.15);
-            case "error":   return Qt.rgba(0.77, 0.17, 0.11, 0.15);
-            default:        return Qt.rgba(0.38, 0.81, 1.0, 0.10);
-        }
-    }
+
+    // Opaque background base so content below doesn't bleed through
+    color: Theme.Theme.dark ? "#2D2D2D" : "#FAFAFA"
+
     border.width: 1
     border.color: {
         switch (severity) {
@@ -31,6 +27,31 @@ Rectangle {
             case "error":   return Theme.Theme.error;
             default:        return Theme.Theme.info;
         }
+    }
+
+    // Tinted severity overlay
+    Rectangle {
+        anchors.fill: parent
+        radius: parent.radius
+        color: {
+            switch (root.severity) {
+                case "success": return Qt.rgba(0.06, 0.48, 0.06, 0.15);
+                case "warning": return Qt.rgba(0.62, 0.36, 0, 0.15);
+                case "error":   return Qt.rgba(0.77, 0.17, 0.11, 0.15);
+                default:        return Qt.rgba(0.38, 0.81, 1.0, 0.10);
+            }
+        }
+    }
+
+    // Drop shadow for elevation
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -1
+        z: -1
+        radius: parent.radius + 1
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.Theme.dark ? "#40000000" : "#20000000"
     }
 
     opacity: 0
