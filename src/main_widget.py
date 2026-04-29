@@ -24,7 +24,7 @@ def setup_application():
 
     # Set application properties
     app.setApplicationName("Telegram Downloader")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("1.12.8")
     app.setOrganizationName("TDL GUI")
 
     # Set application icon if available

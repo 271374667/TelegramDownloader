@@ -31,7 +31,7 @@ def main():
     app = QApplication(sys.argv)
 
     app.setApplicationName("TDL - Telegram Downloader")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion("1.12.8")
     app.setOrganizationName("TDL")
 
     # Set application-wide CJK font so QML never falls back to 宋体
