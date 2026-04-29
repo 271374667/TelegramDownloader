@@ -8,11 +8,11 @@ A modern, user-friendly graphical interface for [TDL (Telegram Downloader)](http
 
 Preview of the download window:
 
-![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)
+![MainWindowPreview](./README_CN.assets/image-20260429100331887.png)
 
 Preview of the floating panel:
 
-![FloatPanelPreview](PixPin_2025-12-31_10-04-10.png)
+![FloatPanelPreview](./README_CN.assets/image-20260429100404422.png)
 
 ## Features
 
@@ -116,7 +116,7 @@ Navigate to **Session Configuration** tab to customize:
 
 #### Method 1: Clipboard Monitoring (Recommended)
 1. Enable **Clipboard Monitoring** checkbox in Download Configuration tab
-2. Copy any Telegram link (Ctrl+C)
+2. Copy any Telegram link (Ctrl+C) or right-click to copy link
 3. Link automatically appears in URL list
 4. Configure download options
 5. Click **Generate Batch File** or use floating panel **Run** button
@@ -124,7 +124,7 @@ Navigate to **Session Configuration** tab to customize:
 #### Method 2: Manual URL Entry
 1. Navigate to **Download Configuration** tab
 2. Paste URLs in the URL list (one per line or comma-separated)
-3. Click **Add URLs**
+3. Click **add**
 4. Configure download options
 5. Click **Generate Batch File**
 

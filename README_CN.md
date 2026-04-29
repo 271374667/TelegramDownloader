@@ -8,11 +8,11 @@
 
 下面是下载窗口的预览:
 
-![MainWindowPreview](PixPin_2025-12-31_10-03-38.png)
+![image-20260429100331887](./README_CN.assets/image-20260429100331887.png)
 
 下面是悬浮置顶窗口的预览
 
-![FloatPanelPreview](PixPin_2025-12-31_10-04-10.png)
+![image-20260429100404422](./README_CN.assets/image-20260429100404422.png)
 
 ## 功能特性
 
