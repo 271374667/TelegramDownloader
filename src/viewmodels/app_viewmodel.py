@@ -6,6 +6,7 @@ import os
 import struct
 import subprocess
 import tempfile
+import threading
 import time
 import wave
 from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
@@ -191,22 +192,24 @@ class AppViewModel(QObject):
             return
         self._last_alert_sound_at = now
 
-        try:
-            import winsound
-            winsound.PlaySound(
-                self._alert_sound_data,
-                winsound.SND_MEMORY | winsound.SND_ASYNC,
-            )
-        except Exception:
-            pass
+        data = self._alert_sound_data
+
+        def _play():
+            try:
+                import winsound
+                winsound.PlaySound(data, winsound.SND_MEMORY)
+            except Exception:
+                pass
+
+        threading.Thread(target=_play, daemon=True).start()
 
     def _build_alert_sound_data(self) -> bytes:
         sample_rate = 22050
-        duration_s = 0.11
+        duration_s = 0.18
         frequency = 1046.5
         frame_count = int(sample_rate * duration_s)
-        amplitude = 0.28
-        fade_samples = max(1, int(sample_rate * 0.012))
+        amplitude = 1.0
+        fade_samples = max(1, int(sample_rate * 0.015))
 
         pcm_frames = bytearray()
         for i in range(frame_count):
