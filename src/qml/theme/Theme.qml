@@ -3,67 +3,65 @@ import QtQuick
 
 QtObject {
     // ══════════════════════════════════════════════════════════════
-    //  WinUI 3 / Fluent 2  —  Dark & Light theme support
+    //  WinUI 3 / Fluent 2  —  Dark theme only
     // ══════════════════════════════════════════════════════════════
 
-    property bool dark: true   // toggle to switch themes
-
     // ── Background / Layer / Surface ───────────────────────────────
-    property color background:       dark ? "#202020"   : "#F3F3F3"
-    property color surface:          dark ? "#282828"   : "#FAFAFA"
-    property color surfaceHover:     dark ? "#323232"   : "#E8E8E8"
-    property color surfacePressed:   dark ? "#2E2E2E"   : "#E0E0E0"
-    property color cardBackground:   dark ? "#2C2C2C"   : "#FFFFFF"
-    property color cardBorder:       dark ? "#1AFFFFFF" : "#0F000000"
+    readonly property color background:       "#202020"
+    readonly property color surface:          "#282828"
+    readonly property color surfaceHover:     "#323232"
+    readonly property color surfacePressed:   "#2E2E2E"
+    readonly property color cardBackground:   "#2C2C2C"
+    readonly property color cardBorder:       "#1AFFFFFF"
 
     // ── Control fill / stroke ──────────────────────────────────────
-    property color inputBackground:  dark ? "#2C2C2C"   : "#FFFFFF"
-    property color inputBorder:      dark ? "#15FFFFFF"  : "#0F000000"
-    property color inputBorderHover: dark ? "#20FFFFFF"  : "#18000000"
-    property color inputBorderFocus: "#60CDFF"
+    readonly property color inputBackground:  "#2C2C2C"
+    readonly property color inputBorder:      "#15FFFFFF"
+    readonly property color inputBorderHover: "#20FFFFFF"
+    readonly property color inputBorderFocus: "#60CDFF"
 
     // ── Accent ─────────────────────────────────────────────────────
-    property color accent:           dark ? "#60CDFF"   : "#005FB8"
-    property color accentDark:       "#0078D4"
-    property color accentLight:      dark ? "#99ECFF"   : "#0067C0"
+    readonly property color accent:           "#60CDFF"
+    readonly property color accentDark:       "#0078D4"
+    readonly property color accentLight:      "#99ECFF"
 
     // ── Text ───────────────────────────────────────────────────────
-    property color textPrimary:      dark ? "#FFFFFF"   : "#1A1A1A"
-    property color textSecondary:    dark ? "#C5C5C5"   : "#616161"
-    property color textTertiary:     dark ? "#9A9A9A"   : "#8A8A8A"
-    property color textDisabled:     dark ? "#A0A0A0"   : "#888888"
-    property color textOnAccent:     "#FFFFFF"
+    readonly property color textPrimary:      "#FFFFFF"
+    readonly property color textSecondary:    "#C5C5C5"
+    readonly property color textTertiary:     "#9A9A9A"
+    readonly property color textDisabled:     "#A0A0A0"
+    readonly property color textOnAccent:     "#FFFFFF"
 
     // ── Divider ────────────────────────────────────────────────────
-    property color divider:          dark ? "#15FFFFFF"  : "#0F000000"
+    readonly property color divider:          "#15FFFFFF"
 
     // ── Status ─────────────────────────────────────────────────────
-    property color success:          dark ? "#6CCB5F"   : "#0F7B0F"
-    property color warning:          dark ? "#FCE100"   : "#9D5D00"
-    property color error:            dark ? "#FF99A4"   : "#C42B1C"
-    property color info:             dark ? "#60CDFF"   : "#005FB8"
+    readonly property color success:          "#6CCB5F"
+    readonly property color warning:          "#FCE100"
+    readonly property color error:            "#FF99A4"
+    readonly property color info:             "#60CDFF"
 
     // ── Button variants ────────────────────────────────────────────
     //  AccentFill
-    property color btnAccent:          "#0078D4"
-    property color btnAccentHover:     "#0E84DE"
-    property color btnAccentPressed:   "#005EA6"
+    readonly property color btnAccent:          "#0078D4"
+    readonly property color btnAccentHover:     "#0E84DE"
+    readonly property color btnAccentPressed:   "#005EA6"
     //  StandardFill
-    property color btnStandard:        dark ? "#30FFFFFF" : "#0A000000"
-    property color btnStandardHover:   dark ? "#1AFFFFFF" : "#12000000"
-    property color btnStandardPressed: dark ? "#12FFFFFF" : "#08000000"
+    readonly property color btnStandard:        "#30FFFFFF"
+    readonly property color btnStandardHover:   "#1AFFFFFF"
+    readonly property color btnStandardPressed: "#12FFFFFF"
     //  SubtleFill
-    property color btnSubtle:          "transparent"
-    property color btnSubtleHover:     dark ? "#0FFFFFFF" : "#08000000"
-    property color btnSubtlePressed:   dark ? "#0AFFFFFF" : "#05000000"
+    readonly property color btnSubtle:          "transparent"
+    readonly property color btnSubtleHover:     "#0FFFFFFF"
+    readonly property color btnSubtlePressed:   "#0AFFFFFF"
     //  Danger
-    property color btnDanger:          "#C42B1C"
-    property color btnDangerHover:     "#D83B2B"
-    property color btnDangerPressed:   "#A41F13"
+    readonly property color btnDanger:          "#C42B1C"
+    readonly property color btnDangerHover:     "#D83B2B"
+    readonly property color btnDangerPressed:   "#A41F13"
     //  Success
-    property color btnSuccess:         "#0F7B0F"
-    property color btnSuccessHover:    "#148A14"
-    property color btnSuccessPressed:  "#0B5E0B"
+    readonly property color btnSuccess:         "#0F7B0F"
+    readonly property color btnSuccessHover:    "#148A14"
+    readonly property color btnSuccessPressed:  "#0B5E0B"
 
     // ── Typography ─────────────────────────────────────────────────
     readonly property string fontFamily: "Source Han Sans SC"

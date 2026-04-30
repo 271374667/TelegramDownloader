@@ -313,7 +313,7 @@ Flickable {
                                 radius: 13
                                 color: chipMa.containsMouse
                                     ? Theme.Theme.accentDark
-                                    : (Theme.Theme.dark ? "#2AFFFFFF" : "#12000000")
+                                    : "#2AFFFFFF"
                                 border.width: 1
                                 border.color: Theme.Theme.divider
 
@@ -350,9 +350,9 @@ Flickable {
                     width: parent.width
                     height: tipText.implicitHeight + 16
                     radius: Theme.Theme.radiusSmall
-                    color: Theme.Theme.dark ? "#1A3A6A" : "#EBF3FC"
+                    color: "#1A3A6A"
                     border.width: 1
-                    border.color: Theme.Theme.dark ? "#2060B0" : "#B3D1EE"
+                    border.color: "#2060B0"
 
                     Text {
                         id: tipText
@@ -360,7 +360,7 @@ Flickable {
                         text: "💡 过滤表达式使用 expr-lang 语法。支持：&&、||、!、>、<、==、contains、startsWith、endsWith、matches 等运算符。"
                         font.pixelSize: Theme.Theme.fontSizeCaption
                         font.family: Theme.Theme.fontFamily
-                        color: Theme.Theme.dark ? "#90C8FF" : "#1464A0"
+                        color: "#90C8FF"
                         wrapMode: Text.Wrap
                     }
                 }
@@ -415,7 +415,7 @@ Flickable {
                     width: parent.width
                     height: Math.max(previewText.implicitHeight + 16, 48)
                     radius: Theme.Theme.radiusSmall
-                    color: Theme.Theme.dark ? "#0D0D0D" : "#F5F5F5"
+                    color: "#0D0D0D"
                     border.width: 1
                     border.color: Theme.Theme.divider
                     clip: true

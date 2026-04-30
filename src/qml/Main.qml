@@ -143,7 +143,7 @@ ApplicationWindow {
                         color: navArea.containsMouse
                             ? Theme.Theme.surfaceHover
                             : pageStack.currentIndex === model.pageIndex
-                            ? (Theme.Theme.dark ? "#0FFFFFFF" : "#0F000000")
+                            ? "#0FFFFFFF"
                             : "transparent"
                         // No color animation — instant state change
 
@@ -232,41 +232,6 @@ ApplicationWindow {
                 anchors.leftMargin: Theme.Theme.spacingS
                 anchors.rightMargin: Theme.Theme.spacingS
                 spacing: 8
-
-                // ── Theme toggle ───────────────────────────────────
-                Rectangle {
-                    width: parent.width
-                    height: 36
-                    radius: Theme.Theme.radiusSmall
-                    color: themeToggleMa.containsMouse ? Theme.Theme.surfaceHover : "transparent"
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        Text {
-                            text: Theme.Theme.dark ? "🌙" : "☀️"
-                            font.pixelSize: 16
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        Text {
-                            text: Theme.Theme.dark ? "深色模式" : "浅色模式"
-                            font.pixelSize: Theme.Theme.fontSizeBody
-                            font.family: Theme.Theme.fontFamily
-                            color: Theme.Theme.textPrimary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: themeToggleMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Theme.Theme.dark = !Theme.Theme.dark
-                    }
-                }
 
                 // ── Divider ────────────────────────────────────────
                 Rectangle {

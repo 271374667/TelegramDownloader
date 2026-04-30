@@ -138,7 +138,7 @@ Item {
             id: panelContent
             anchors.fill: parent
             radius: Theme.Theme.radiusLarge
-            color: Theme.Theme.dark ? "#E6202020" : "#E6F3F3F3"
+            color: "#E6202020"
             border.width: 1
             border.color: root.recentIncrease > 0 ? Theme.Theme.accentLight : Theme.Theme.cardBorder
             implicitWidth: panelRow.implicitWidth + 20
@@ -266,7 +266,7 @@ Item {
         width: Math.max(36, btnText.implicitWidth + 16)
         height: 26
         radius: Theme.Theme.radiusSmall
-        color: !enabled ? (Theme.Theme.dark ? "#333333" : "#E0E0E0")
+        color: !enabled ? "#333333"
              : ma.pressed ? Qt.darker(bgColor, 1.3)
              : ma.containsMouse ? Qt.lighter(bgColor, 1.15)
              : bgColor

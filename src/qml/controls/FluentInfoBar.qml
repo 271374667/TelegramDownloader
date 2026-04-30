@@ -17,7 +17,7 @@ Rectangle {
     radius: Theme.Theme.radiusSmall
 
     // Opaque background base so content below doesn't bleed through
-    color: Theme.Theme.dark ? "#2D2D2D" : "#FAFAFA"
+    color: "#2D2D2D"
 
     border.width: 1
     border.color: {
@@ -51,7 +51,7 @@ Rectangle {
         radius: parent.radius + 1
         color: "transparent"
         border.width: 1
-        border.color: Theme.Theme.dark ? "#40000000" : "#20000000"
+        border.color: "#40000000"
     }
 
     opacity: 0

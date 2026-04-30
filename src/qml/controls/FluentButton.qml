@@ -16,7 +16,7 @@ Button {
     background: Rectangle {
         radius: Theme.Theme.radiusSmall
         border.width: variant === "subtle" || variant === "accent" ? 0 : 1
-        border.color: Theme.Theme.dark ? "#12FFFFFF" : "#0F000000"
+        border.color: "#12FFFFFF"
         color: bgColor
 
         property color bgColor: {

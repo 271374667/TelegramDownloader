@@ -20,19 +20,18 @@ Item {
     property int resizeMargin: 5
     property int resizeCornerSize: 10
 
-    readonly property bool isDark: Theme.Theme.dark
     readonly property bool isMaximized: root.window && root.window.visibility === Window.Maximized
     readonly property bool hasLogo: hasIcon(root.logoSource)
     readonly property bool canResize: root.window
         && root.window.visibility !== Window.Maximized
         && root.window.visibility !== Window.FullScreen
-    readonly property color barColor: isDark ? "#252525" : "#f5f5f5"
-    readonly property color separatorColor: isDark ? "#3a3a3a" : "#dfdfdf"
-    readonly property color textColor: isDark ? "#f5f5f5" : "#202020"
-    readonly property color secondaryTextColor: isDark ? "#d7d7d7" : "#3d3d3d"
-    readonly property color logoBadgeColor: isDark ? "#313131" : "#ebebeb"
-    readonly property color hoverColor: isDark ? "#353535" : "#e8e8e8"
-    readonly property color pressedColor: isDark ? "#454545" : "#d9d9d9"
+    readonly property color barColor: "#252525"
+    readonly property color separatorColor: "#3a3a3a"
+    readonly property color textColor: "#f5f5f5"
+    readonly property color secondaryTextColor: "#d7d7d7"
+    readonly property color logoBadgeColor: "#313131"
+    readonly property color hoverColor: "#353535"
+    readonly property color pressedColor: "#454545"
     readonly property color closeHoverColor: "#c42b1c"
     readonly property color closePressedColor: "#a52619"
     readonly property string minimizeGlyph: "\uE921"

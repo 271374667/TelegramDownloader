@@ -70,9 +70,7 @@ Flickable {
                 Rectangle {
                     width: parent.width
                     height: 28
-                    color: Theme.Theme.dark
-                        ? Qt.rgba(1,1,1,0.04)
-                        : Qt.rgba(0,0,0,0.04)
+                    color: Qt.rgba(1,1,1,0.04)
                     radius: Theme.Theme.radiusSmall
 
                     visible: queueVM.queueCount > 0

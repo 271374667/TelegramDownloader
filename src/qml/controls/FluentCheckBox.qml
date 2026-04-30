@@ -14,7 +14,7 @@ CheckBox {
         radius: Theme.Theme.radiusSmall
         color: control.checked ? Theme.Theme.accentDark : "transparent"
         border.width: control.checked ? 0 : 1.5
-        border.color: control.hovered ? (Theme.Theme.dark ? "#50FFFFFF" : "#50000000") : (Theme.Theme.dark ? "#30FFFFFF" : "#30000000")
+        border.color: control.hovered ? "#50FFFFFF" : "#30FFFFFF"
 
         Behavior on color { ColorAnimation { duration: Theme.Theme.animFast } }
 

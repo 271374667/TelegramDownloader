@@ -27,7 +27,7 @@ Rectangle {
         anchors.right: parent.right
         height: 1
         radius: parent.radius
-        color: Theme.Theme.dark ? "#08FFFFFF" : "#15FFFFFF"
+        color: "#08FFFFFF"
         z: 1
     }
 
@@ -71,16 +71,16 @@ Rectangle {
                 indicator: Rectangle {
                     implicitWidth: 40; implicitHeight: 20
                     radius: 10
-                    color: toggleSwitch.checked ? Theme.Theme.accentDark : (Theme.Theme.dark ? "#4D4D4D" : "#B0B0B0")
+                    color: toggleSwitch.checked ? Theme.Theme.accentDark : "#4D4D4D"
                     border.width: toggleSwitch.checked ? 0 : 1
-                    border.color: Theme.Theme.dark ? "#30FFFFFF" : "#30000000"
+                    border.color: "#30FFFFFF"
                     Behavior on color { ColorAnimation { duration: Theme.Theme.animFast } }
 
                     Rectangle {
                         width: 14; height: 14; radius: 7
                         anchors.verticalCenter: parent.verticalCenter
                         x: toggleSwitch.checked ? parent.width - width - 3 : 3
-                        color: toggleSwitch.checked ? "#FFFFFF" : (Theme.Theme.dark ? "#B0B0B0" : "#6A6A6A")
+                        color: toggleSwitch.checked ? "#FFFFFF" : "#B0B0B0"
                         Behavior on x { NumberAnimation { duration: Theme.Theme.animNormal; easing.type: Easing.OutCubic } }
                     }
                 }

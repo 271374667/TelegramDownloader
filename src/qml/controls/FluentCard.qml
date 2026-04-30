@@ -19,7 +19,7 @@ Rectangle {
         anchors.right: parent.right
         height: 1
         radius: parent.radius
-        color: Theme.Theme.dark ? "#08FFFFFF" : "#15FFFFFF"
+        color: "#08FFFFFF"
     }
 
     implicitWidth: 400
