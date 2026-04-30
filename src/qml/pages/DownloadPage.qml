@@ -54,6 +54,49 @@ Flickable {
                     }
                 }
 
+                // Batch range input row
+                RowLayout {
+                    width: parent.width
+                    spacing: Theme.Theme.spacingS
+
+                    FluentTextField {
+                        id: rangeStartInput
+                        Layout.fillWidth: true
+                        placeholderText: "起始链接 https://t.me/c/.../100"
+                    }
+
+                    Text {
+                        text: "→"
+                        color: Theme.Theme.textSecondary
+                        font.pixelSize: Theme.Theme.fontSizeBody
+                        font.family: Theme.Theme.fontFamily
+                    }
+
+                    FluentTextField {
+                        id: rangeEndInput
+                        Layout.fillWidth: true
+                        placeholderText: "结束链接 https://t.me/c/.../200"
+                    }
+
+                    FluentButton {
+                        text: "批量添加"
+                        variant: "subtle"
+                        enabled: rangeStartInput.text.length > 0 && rangeEndInput.text.length > 0
+                        onClicked: {
+                            var result = urlModel.addRange(rangeStartInput.text, rangeEndInput.text)
+                            if (result.startsWith("已添加")) {
+                                rangeStartInput.text = ""
+                                rangeEndInput.text   = ""
+                            }
+                            appVM.notificationRequested(
+                                "批量添加",
+                                result,
+                                result.startsWith("已添加") ? "success" : "error"
+                            )
+                        }
+                    }
+                }
+
                 // URL List
                 Rectangle {
                     width: parent.width

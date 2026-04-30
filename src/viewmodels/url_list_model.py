@@ -110,6 +110,55 @@ class UrlListModel(QAbstractListModel):
                 added += 1
         return added
 
+    _PRIVATE_RE = re.compile(r'https?://t\.me/c/(\d+)/(\d+)', re.IGNORECASE)
+    _PUBLIC_RE  = re.compile(r'https?://t\.me/([A-Za-z0-9_]{4,})/(\d+)', re.IGNORECASE)
+
+    @Slot(str, str, result=str)
+    def addRange(self, start_url: str, end_url: str) -> str:
+        """Generate all URLs between start and end (inclusive) and add them.
+
+        Both URLs must be from the same chat.
+        Returns a result message string (success or error).
+        """
+        start_url = start_url.strip()
+        end_url   = end_url.strip()
+
+        def _parse(url):
+            m = self._PRIVATE_RE.search(url)
+            if m:
+                return ("c/" + m.group(1), int(m.group(2)), f"https://t.me/c/{m.group(1)}/{{id}}")
+            m = self._PUBLIC_RE.search(url)
+            if m:
+                return (m.group(1), int(m.group(2)), f"https://t.me/{m.group(1)}/{{id}}")
+            return None
+
+        r1 = _parse(start_url)
+        r2 = _parse(end_url)
+
+        if r1 is None or r2 is None:
+            return "无法解析链接，请检查格式"
+        if r1[0] != r2[0]:
+            return "两个链接必须来自同一个频道"
+
+        chat_key, id1, tmpl = r1
+        _, id2, _           = r2
+
+        min_id, max_id = min(id1, id2), max(id1, id2)
+        if max_id - min_id > 5000:
+            return f"范围过大（{max_id - min_id + 1} 条），最多支持 5000 条"
+
+        added = 0
+        for mid in range(min_id, max_id + 1):
+            url = tmpl.format(id=mid)
+            if self.addUrl(url):
+                added += 1
+
+        skipped = (max_id - min_id + 1) - added
+        msg = f"已添加 {added} 个链接（共 {max_id - min_id + 1} 条"
+        if skipped:
+            msg += f"，{skipped} 条已存在跳过"
+        return msg + "）"
+
     @Slot(result=str)
     def exportToText(self) -> str:
         return "\n".join(self._urls)
