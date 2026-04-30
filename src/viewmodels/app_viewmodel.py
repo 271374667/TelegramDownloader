@@ -16,6 +16,7 @@ from core.batch_generator import BatchGenerator
 from core.clipboard_monitor import ClipboardMonitor
 from .session_viewmodel import SessionViewModel
 from .download_viewmodel import DownloadViewModel
+from .export_viewmodel import ExportViewModel
 from .url_list_model import UrlListModel
 
 
@@ -24,6 +25,7 @@ class AppViewModel(QObject):
 
     # ── Signals ─────────────────────────────────────────────────────
     commandPreviewChanged = Signal()
+    exportCommandPreviewChanged = Signal()
     floatingPanelVisibleChanged = Signal()
     clipboardMonitoringChanged = Signal()
     tdlStatusChanged = Signal()
@@ -33,12 +35,14 @@ class AppViewModel(QObject):
         self,
         session_vm: SessionViewModel,
         download_vm: DownloadViewModel,
+        export_vm: ExportViewModel,
         url_model: UrlListModel,
         parent=None,
     ):
         super().__init__(parent)
         self._session_vm = session_vm
         self._download_vm = download_vm
+        self._export_vm = export_vm
         self._url_model = url_model
 
         # Internal state
@@ -49,6 +53,9 @@ class AppViewModel(QObject):
         self._last_alert_sound_at = 0.0
         self._alert_sound_data = self._build_alert_sound_data()
 
+        # Internal state – export preview
+        self._export_command_preview = ""
+
         # Core services
         self._batch = BatchGenerator()
         self._clipboard = ClipboardMonitor()
@@ -57,16 +64,26 @@ class AppViewModel(QObject):
         self._clipboard.new_urls_detected.connect(self._on_new_urls)
         self._url_model.urlsChanged.connect(self._sync_clipboard_urls)
 
-        # Debounced preview update
+        # Debounced download preview update
         self._preview_timer = QTimer(self)
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(300)
         self._preview_timer.timeout.connect(self._do_update_preview)
 
+        # Debounced export preview update
+        self._export_preview_timer = QTimer(self)
+        self._export_preview_timer.setSingleShot(True)
+        self._export_preview_timer.setInterval(300)
+        self._export_preview_timer.timeout.connect(self._do_update_export_preview)
+
         # Connect config changes to auto-preview
         self._session_vm.configChanged.connect(self.schedulePreviewUpdate)
         self._download_vm.configChanged.connect(self.schedulePreviewUpdate)
         self._url_model.urlsChanged.connect(self.schedulePreviewUpdate)
+
+        # Connect export config changes to export preview
+        self._session_vm.configChanged.connect(self._schedule_export_preview_update)
+        self._export_vm.configChanged.connect(self._schedule_export_preview_update)
 
         # Start clipboard monitor
         self._clipboard.start()
@@ -97,6 +114,56 @@ class AppViewModel(QObject):
         if self._command_preview != preview:
             self._command_preview = preview
             self.commandPreviewChanged.emit()
+
+    # ── Export Preview ───────────────────────────────────────────────
+
+    def _schedule_export_preview_update(self):
+        self._export_preview_timer.start()
+
+    def _do_update_export_preview(self):
+        try:
+            export_cfg = self._export_vm.get_config()
+            session_cfg = self._session_vm.get_config()
+            preview = self._batch.get_export_preview_command(export_cfg, session_cfg)
+        except Exception as e:
+            preview = f"Error: {e}"
+        if self._export_command_preview != preview:
+            self._export_command_preview = preview
+            self.exportCommandPreviewChanged.emit()
+
+    def _get_export_command_preview(self):
+        return self._export_command_preview
+
+    exportCommandPreview = Property(
+        str, _get_export_command_preview, notify=exportCommandPreviewChanged
+    )
+
+    # ── Export batch generation ──────────────────────────────────────
+
+    @Slot(result=bool)
+    def generateExportBatch(self) -> bool:
+        export_cfg = self._export_vm.get_config()
+        session_cfg = self._session_vm.get_config()
+        ok, msg = self._batch.generate_export_batch(export_cfg, session_cfg)
+        self.notificationRequested.emit(
+            "生成导出批处理", msg, "success" if ok else "error"
+        )
+        return ok
+
+    @Slot()
+    def executeExportBatch(self):
+        export_cfg = self._export_vm.get_config()
+        session_cfg = self._session_vm.get_config()
+        ok, msg = self._batch.generate_export_batch(export_cfg, session_cfg, auto_close=True)
+        if ok:
+            import subprocess
+            subprocess.Popen(
+                ["cmd", "/c", "start", "", "tdl_export.bat"],
+                shell=True,
+            )
+            self.notificationRequested.emit("导出", "导出任务已启动", "success")
+        else:
+            self.notificationRequested.emit("导出", msg, "error")
 
     # ── Batch generation ────────────────────────────────────────────
 

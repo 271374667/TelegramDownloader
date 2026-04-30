@@ -263,3 +263,128 @@ class FullConfig:
                 args.extend(["--port", str(self.download.port)])
 
         return args
+
+
+# ---------------------------------------------------------------------------
+# Export Configuration
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ExportConfig:
+    """Configuration for tdl chat export parameters"""
+
+    # Target chat (empty string = Saved Messages / Favourites)
+    chat: str = ""
+
+    # Output file path
+    output: str = "tdl-export.json"
+
+    # Source selection (topic / reply are mutually exclusive)
+    topic_enabled: bool = False
+    topic_id: int = 0
+
+    reply_enabled: bool = False
+    reply_post_id: int = 0
+
+    # Range
+    range_enabled: bool = False
+    range_type: str = "time"   # "time" | "id" | "last"
+    range_start: str = ""      # for time: Unix ts; for id: msg id; for last: N
+    range_end: str = ""        # unused when range_type == "last"
+
+    # Filter expression (expr-lang)
+    filter_enabled: bool = False
+    filter_expr: str = ""
+
+    # Output options
+    with_content: bool = False
+    raw: bool = False
+    all_messages: bool = False
+
+    def validate(self) -> List[str]:
+        errors: List[str] = []
+        if self.topic_enabled and self.reply_enabled:
+            errors.append("不能同时启用主题过滤和回复过滤")
+        if self.topic_enabled and self.topic_id <= 0:
+            errors.append("主题 ID 必须大于 0")
+        if self.reply_enabled and self.reply_post_id <= 0:
+            errors.append("回复帖子 ID 必须大于 0")
+        if self.range_enabled and self.range_type == "last":
+            try:
+                n = int(self.range_start)
+                if n < 1:
+                    errors.append("最新消息数量必须大于 0")
+            except (ValueError, TypeError):
+                if self.range_start.strip():
+                    errors.append("最新消息数量必须是整数")
+        if self.raw and self.all_messages:
+            errors.append("--raw 与 --all 不能同时使用")
+        return errors
+
+    def get_command_args(self, session: "SessionConfig") -> List[str]:
+        """Build the full tdl chat export command argument list."""
+        args: List[str] = ["bin\\tdl"]
+
+        # ── Session-level flags ──────────────────────────────────────
+        if session.basic_settings_enabled:
+            if session.debug:
+                args.append("--debug")
+            if session.delay != "0s":
+                args.extend(["--delay", session.delay])
+            args.extend(["-l", str(session.limit)])
+            args.extend(["-n", session.namespace])
+
+        if session.network_settings_enabled:
+            if session.ntp_server.strip():
+                args.extend(["--ntp", session.ntp_server])
+            args.extend(["--pool", str(session.pool)])
+            if session.proxy.strip():
+                args.extend(["--proxy", session.proxy])
+            args.extend(["--reconnect-timeout", session.reconnect_timeout])
+
+        if session.storage_settings_enabled:
+            storage_cfg = f"type={session.storage_type},path={session.storage_path}"
+            args.extend(["--storage", storage_cfg])
+
+        if session.performance_settings_enabled:
+            args.extend(["-t", str(session.threads)])
+
+        # ── Sub-command ──────────────────────────────────────────────
+        args.extend(["chat", "export"])
+
+        if self.chat.strip():
+            args.extend(["-c", self.chat.strip()])
+
+        if self.output.strip() and self.output.strip() != "tdl-export.json":
+            args.extend(["-o", self.output.strip()])
+
+        # Source selection
+        if self.topic_enabled and self.topic_id > 0:
+            args.extend(["--topic", str(self.topic_id)])
+        elif self.reply_enabled and self.reply_post_id > 0:
+            args.extend(["--reply", str(self.reply_post_id)])
+
+        # Range
+        if self.range_enabled:
+            args.extend(["-T", self.range_type])
+            if self.range_type == "last":
+                if self.range_start.strip():
+                    args.extend(["-i", self.range_start.strip()])
+            else:
+                parts = [p for p in (self.range_start.strip(), self.range_end.strip()) if p]
+                if parts:
+                    args.extend(["-i", ",".join(parts)])
+
+        # Filter
+        if self.filter_enabled and self.filter_expr.strip():
+            args.extend(["-f", self.filter_expr.strip()])
+
+        # Options
+        if self.with_content:
+            args.append("--with-content")
+        if self.raw:
+            args.append("--raw")
+        if self.all_messages:
+            args.append("--all")
+
+        return args

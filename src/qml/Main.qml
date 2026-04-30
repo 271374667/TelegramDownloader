@@ -133,7 +133,8 @@ ApplicationWindow {
                 Repeater {
                     model: ListModel {
                         ListElement { label: "📥  下载"; pageIndex: 0 }
-                        ListElement { label: "⚙  会话设置"; pageIndex: 1 }
+                        ListElement { label: "📤  消息导出"; pageIndex: 1 }
+                        ListElement { label: "⚙  会话设置"; pageIndex: 2 }
                     }
                     delegate: Rectangle {
                         width: parent.width
@@ -303,7 +304,14 @@ ApplicationWindow {
                 Text {
                     anchors.left: parent.left; anchors.leftMargin: Theme.Theme.spacingXL
                     anchors.verticalCenter: parent.verticalCenter
-                    text: pageStack.currentIndex === 0 ? "下载配置" : "会话设置"
+                    text: {
+                        switch (pageStack.currentIndex) {
+                            case 0: return "下载配置"
+                            case 1: return "消息导出"
+                            case 2: return "会话设置"
+                            default: return ""
+                        }
+                    }
                     font.pixelSize: Theme.Theme.fontSizeTitle
                     font.family: Theme.Theme.fontFamily
                     font.weight: Font.DemiBold
@@ -330,12 +338,8 @@ ApplicationWindow {
                 currentIndex: 0
 
                 DownloadPage {}
+                ExportPage {}
                 SessionPage {}
-            }
-
-            // Bottom bar: Command Preview
-            CommandPreview {
-                Layout.fillWidth: true
             }
         }
     }

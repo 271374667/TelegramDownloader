@@ -23,6 +23,7 @@ from viewmodels import (
     AppViewModel,
     SessionViewModel,
     DownloadViewModel,
+    ExportViewModel,
     UrlListModel,
 )
 
@@ -70,13 +71,14 @@ def main():
     url_model = UrlListModel(parent=app)
     session_vm = SessionViewModel(parent=app)
     download_vm = DownloadViewModel(parent=app)
-    app_vm = AppViewModel(session_vm, download_vm, url_model, parent=app)
+    export_vm = ExportViewModel(parent=app)
+    app_vm = AppViewModel(session_vm, download_vm, export_vm, url_model, parent=app)
 
     # ── QML Engine ──────────────────────────────────────────────────
     engine = QQmlApplicationEngine()
 
     # Keep explicit Python references to prevent GC
-    engine._vm_refs = [app_vm, session_vm, download_vm, url_model]
+    engine._vm_refs = [app_vm, session_vm, download_vm, export_vm, url_model]
 
     # Add QML import paths
     qml_dir = Path(__file__).parent / "qml"
@@ -87,6 +89,7 @@ def main():
     ctx.setContextProperty("appVM", app_vm)
     ctx.setContextProperty("sessionVM", session_vm)
     ctx.setContextProperty("downloadVM", download_vm)
+    ctx.setContextProperty("exportVM", export_vm)
     ctx.setContextProperty("urlModel", url_model)
 
     # Load main QML
