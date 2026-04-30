@@ -10,7 +10,6 @@ import json
 import os
 import re
 import subprocess
-import tempfile
 import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -157,10 +156,18 @@ def fetch_expected_files(
         min_id = min(wanted_ids)
         max_id = max(wanted_ids)
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False, mode="w", encoding="utf-8"
-        ) as f:
-            tmp_path = f.name
+        # Use a temp file in cwd (avoids path-with-spaces issues on Windows).
+        # NamedTemporaryFile on Windows holds a lock, so we generate the name
+        # ourselves and let tdl create/overwrite the file.
+        tmp_path = os.path.join(
+            os.getcwd(),
+            f".tdl_export_{chat_id.lstrip('-')}_{min_id}_{max_id}.json"
+        )
+        # Remove any leftover from a previous run
+        try:
+            os.unlink(tmp_path)
+        except FileNotFoundError:
+            pass
 
         try:
             # Fetch entire [min_id, max_id] range in one call
