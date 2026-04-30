@@ -103,11 +103,11 @@ Item {
                     width: parent.width
                     height: cardContent.implicitHeight + 28
                     radius: Theme.Theme.radiusMedium
-                    color: Theme.Theme.card
+                    color: Theme.Theme.cardBackground
                     border.width: 1
                     border.color: {
-                        if (model.taskStatus === "partial") return "#40FF9800"
-                        if (model.taskStatus === "failed")  return "#40F44336"
+                        if (model.taskStatus === "partial") return "#80FF9800"
+                        if (model.taskStatus === "failed")  return "#80F44336"
                         return Theme.Theme.cardBorder
                     }
 
@@ -155,10 +155,10 @@ Item {
                                 height: 20
                                 color: {
                                     switch (model.taskStatus) {
-                                        case "completed": return "#1A4CAF50"
-                                        case "partial":   return "#1AFF9800"
-                                        case "failed":    return "#1AF44336"
-                                        default:          return "#1A0078D4"
+                                        case "completed": return "#334CAF50"
+                                        case "partial":   return "#33FF9800"
+                                        case "failed":    return "#33F44336"
+                                        default:          return "#330078D4"
                                     }
                                 }
 
