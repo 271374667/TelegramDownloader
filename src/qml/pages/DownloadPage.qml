@@ -432,6 +432,7 @@ Flickable {
             }
 
             RowLayout {
+                width: parent.width - 40
                 spacing: Theme.Theme.spacingS
 
                 FluentButton {

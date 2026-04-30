@@ -267,22 +267,20 @@ Flickable {
                     wrapMode: Text.Wrap
                 }
 
-                RowLayout {
-                    width: parent.width
-                    spacing: Theme.Theme.spacingM
-
-                    FluentButton {
-                        text: "生成 BAT"
-                        enabled: queueVM.queueCount > 0
-                        onClicked: appVM.generateQueueBatch()
-                        Layout.preferredWidth: 120
-                    }
+                Row {
+                    spacing: 8
 
                     FluentButton {
                         text: "▶  运行队列下载"
                         variant: "accent"
                         enabled: queueVM.queueCount > 0
                         onClicked: appVM.executeQueueBatch()
+                    }
+
+                    FluentButton {
+                        text: "生成 BAT"
+                        enabled: queueVM.queueCount > 0
+                        onClicked: appVM.generateQueueBatch()
                     }
                 }
 
