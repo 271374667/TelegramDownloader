@@ -225,6 +225,11 @@ class TaskHistoryManager:
     def get_history(self) -> List[TaskRecord]:
         return list(self._history)
 
+    def delete_task(self, task_id: str):
+        """Remove a task from history by its ID."""
+        self._history = [t for t in self._history if t.id != task_id]
+        self._save_history()
+
     @property
     def max_history(self) -> int:
         return self._max_history

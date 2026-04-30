@@ -504,6 +504,9 @@ ApplicationWindow {
         anchors.centerIn: parent
         modal: true
         width: 500
+        // State-based height: loading ≈200, done-no-files ≈220, done-with-files ≈420
+        height: (preDownloadDialog._queryDone && preDownloadDialog._fileList.length > 0)
+                ? 420 : 220
         closePolicy: Dialog.NoAutoClose
         standardButtons: Dialog.NoButton
 
@@ -648,6 +651,7 @@ ApplicationWindow {
         anchors.centerIn: parent
         modal: true
         width: 440
+        height: 220
         closePolicy: Dialog.CloseOnEscape | Dialog.CloseOnPressOutside
         standardButtons: Dialog.NoButton
 
@@ -714,8 +718,7 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
 
-            RowLayout {
-                width: parent.width - 40
+            Row {
                 spacing: Theme.Theme.spacingS
 
                 // Retry failed items button (partial / failed)

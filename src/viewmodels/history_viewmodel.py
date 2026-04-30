@@ -152,3 +152,9 @@ class HistoryViewModel(QObject):
         if task is None:
             return
         self.retryRequested.emit(json.dumps(task.urls, ensure_ascii=False), False)
+
+    @Slot(str)
+    def deleteTask(self, task_id: str):
+        """Delete a task from history."""
+        self._manager.delete_task(task_id)
+        self.refresh()

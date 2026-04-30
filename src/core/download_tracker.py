@@ -24,14 +24,15 @@ _PUBLIC_URL_RE  = re.compile(r"https?://t\.me/([A-Za-z0-9_]{4,})/(\d+)")
 def parse_url(url: str) -> Optional[Tuple[str, int]]:
     """Parse a Telegram share URL into (chat_id_str, message_id).
 
-    Private channels: chat_id_str = "-100<channel_id>"
+    Private channels: chat_id_str = "<channel_id>" (raw number, no -100 prefix)
     Public  channels: chat_id_str = "<username>"
     Returns None if not parseable.
     """
     url = url.strip()
     m = _PRIVATE_URL_RE.search(url)
     if m:
-        return f"-100{m.group(1)}", int(m.group(2))
+        # Use the raw channel ID from the URL — tdl expects it without the -100 prefix
+        return m.group(1), int(m.group(2))
     m = _PUBLIC_URL_RE.search(url)
     if m:
         return m.group(1), int(m.group(2))
@@ -115,15 +116,23 @@ def run_chat_export(
             encoding="utf-8",
             errors="replace",
         )
+        print(f"[export] cmd: {' '.join(args)}", flush=True)
+        print(f"[export] returncode: {result.returncode}", flush=True)
+        if result.stdout.strip():
+            print(f"[export] stdout: {result.stdout[:500]}", flush=True)
+        if result.stderr.strip():
+            print(f"[export] stderr: {result.stderr[:500]}", flush=True)
         if result.returncode != 0:
             return []
         if not os.path.exists(output_path):
+            print(f"[export] output file not found: {output_path}", flush=True)
             return []
         with open(output_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         # Keep only records that have a media file
         return [item for item in data if isinstance(item, dict) and item.get("file")]
-    except Exception:
+    except Exception as e:
+        print(f"[export] exception: {e}", flush=True)
         return []
 
 

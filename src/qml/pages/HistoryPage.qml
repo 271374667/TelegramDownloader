@@ -214,6 +214,12 @@ Item {
                             }
 
                             Item { Layout.fillWidth: true }
+
+                            FluentButton {
+                                text: "删除"
+                                variant: "subtle"
+                                onClicked: historyVM.deleteTask(model.taskId)
+                            }
                         }
                     }
                 }
