@@ -149,6 +149,14 @@ Flickable {
                     }
 
                     FluentButton {
+                        text: "导出到队列"
+                        variant: "subtle"
+                        iconText: "📦"
+                        enabled: urlModel.count > 0
+                        onClicked: queueNameDialog.open()
+                    }
+
+                    FluentButton {
                         text: "清空"
                         variant: "subtle"
                         iconText: "🗑"
@@ -353,11 +361,80 @@ Flickable {
         onAccepted: {
             var path = folder.toString();
             if (Qt.platform.os === "windows")
-                path = path.replace(/^file:\/\/\//, "");
+                path = path.replace(/^\/\/\//, "");
             else
-                path = path.replace(/^file:\/\//, "");
+                path = path.replace(/^\/\//, "");
             downloadVM.directory = path;
             dirField.text = path;
+        }
+    }
+
+    // ── Export-to-Queue dialog ──────────────────────────────────────
+    Dialog {
+        id: queueNameDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: "导出到下载队列"
+        width: 380
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        onOpened: {
+            queueNameInput.text = ""
+            queueErrorText.text = ""
+            queueNameInput.forceActiveFocus()
+        }
+
+        onAccepted: {
+            var name = queueNameInput.text.trim()
+            if (!name) {
+                queueErrorText.text = "队列名称不能为空"
+                return
+            }
+            if (queueVM.nameExists(name)) {
+                queueErrorText.text = "队列「" + name + "」已存在，请换一个名称"
+                return
+            }
+            var err = appVM.exportToQueue(name)
+            if (err) {
+                queueErrorText.text = err
+            } else {
+                queueNameDialog.close()
+            }
+        }
+
+        Column {
+            width: parent.width
+            spacing: Theme.Theme.spacingS
+
+            Text {
+                width: parent.width
+                text: "当前链接列表（" + urlModel.count + " 个）将保存为队列，不会立即下载。"
+                font.pixelSize: Theme.Theme.fontSizeBody
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textSecondary
+                wrapMode: Text.Wrap
+            }
+
+            FluentTextField {
+                id: queueNameInput
+                width: parent.width
+                label: "队列名称"
+                placeholderText: "例如：频道A第1批"
+                Keys.onReturnPressed: queueNameDialog.accept()
+                Keys.onEnterPressed: queueNameDialog.accept()
+            }
+
+            Text {
+                id: queueErrorText
+                width: parent.width
+                text: ""
+                font.pixelSize: Theme.Theme.fontSizeCaption
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.error
+                wrapMode: Text.Wrap
+                visible: text.length > 0
+            }
         }
     }
 }

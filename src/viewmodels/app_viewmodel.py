@@ -17,6 +17,7 @@ from core.clipboard_monitor import ClipboardMonitor
 from .session_viewmodel import SessionViewModel
 from .download_viewmodel import DownloadViewModel
 from .export_viewmodel import ExportViewModel
+from .queue_viewmodel import QueueViewModel
 from .url_list_model import UrlListModel
 
 
@@ -36,6 +37,7 @@ class AppViewModel(QObject):
         session_vm: SessionViewModel,
         download_vm: DownloadViewModel,
         export_vm: ExportViewModel,
+        queue_vm: QueueViewModel,
         url_model: UrlListModel,
         parent=None,
     ):
@@ -43,6 +45,7 @@ class AppViewModel(QObject):
         self._session_vm = session_vm
         self._download_vm = download_vm
         self._export_vm = export_vm
+        self._queue_vm = queue_vm
         self._url_model = url_model
 
         # Internal state
@@ -164,6 +167,61 @@ class AppViewModel(QObject):
             self.notificationRequested.emit("导出", "导出任务已启动", "success")
         else:
             self.notificationRequested.emit("导出", msg, "error")
+
+    # ── Queue ────────────────────────────────────────────────────────
+
+    @Slot(str, result=str)
+    def exportToQueue(self, name: str) -> str:
+        """Save current URL list as a named queue JSON.  Returns "" on success
+        or an error message string on failure."""
+        from core.queue_manager import save_queue, queue_name_exists
+        name = name.strip()
+        if not name:
+            return "队列名称不能为空"
+        urls = self._url_model.get_urls()
+        if not urls:
+            return "链接列表为空，请先添加链接"
+        queue_dir = self._queue_vm.queueDir
+        if queue_name_exists(name, queue_dir):
+            return f"队列「{name}」已存在，请换一个名称"
+        ok, msg = save_queue(name, urls, queue_dir)
+        if ok:
+            self._url_model.clear()
+            self._queue_vm.refreshQueues()
+            self.notificationRequested.emit("导出队列", msg, "success")
+            return ""
+        self.notificationRequested.emit("导出队列", msg, "error")
+        return msg
+
+    @Slot(result=bool)
+    def generateQueueBatch(self) -> bool:
+        from core.queue_manager import list_queues
+        queues = list_queues(self._queue_vm.queueDir)
+        session_cfg = self._session_vm.get_config()
+        ok, msg = self._batch.generate_queue_batch(
+            queues, self._queue_vm.outputDir, session_cfg, auto_close=False
+        )
+        self.notificationRequested.emit(
+            "生成队列批处理", msg, "success" if ok else "error"
+        )
+        return ok
+
+    @Slot()
+    def executeQueueBatch(self):
+        from core.queue_manager import list_queues
+        queues = list_queues(self._queue_vm.queueDir)
+        session_cfg = self._session_vm.get_config()
+        ok, msg = self._batch.generate_queue_batch(
+            queues, self._queue_vm.outputDir, session_cfg, auto_close=True
+        )
+        if ok:
+            subprocess.Popen(
+                ["cmd", "/c", "start", "", "tdl_queue.bat"],
+                shell=True,
+            )
+            self.notificationRequested.emit("队列下载", f"已启动 {len(queues)} 个队列的下载", "success")
+        else:
+            self.notificationRequested.emit("队列下载", msg, "error")
 
     # ── Batch generation ────────────────────────────────────────────
 

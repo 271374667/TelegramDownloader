@@ -134,7 +134,8 @@ ApplicationWindow {
                     model: ListModel {
                         ListElement { label: "📥  下载"; pageIndex: 0 }
                         ListElement { label: "📤  消息导出"; pageIndex: 1 }
-                        ListElement { label: "⚙  会话设置"; pageIndex: 2 }
+                        ListElement { label: "📦  队列下载"; pageIndex: 2 }
+                        ListElement { label: "⚙  会话设置"; pageIndex: 3 }
                     }
                     delegate: Rectangle {
                         width: parent.width
@@ -183,6 +184,26 @@ ApplicationWindow {
                                 id: badgeText
                                 anchors.centerIn: parent
                                 text: urlModel.count
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                color: "#FFFFFF"
+                            }
+                        }
+
+                        // Queue count badge
+                        Rectangle {
+                            visible: model.pageIndex === 2 && queueVM.queueCount > 0
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(22, queueBadgeText.implicitWidth + 10)
+                            height: 20
+                            radius: 10
+                            color: Theme.Theme.success
+
+                            Text {
+                                id: queueBadgeText
+                                anchors.centerIn: parent
+                                text: queueVM.queueCount
                                 font.pixelSize: 11
                                 font.weight: Font.Bold
                                 color: "#FFFFFF"
@@ -308,7 +329,8 @@ ApplicationWindow {
                         switch (pageStack.currentIndex) {
                             case 0: return "下载配置"
                             case 1: return "消息导出"
-                            case 2: return "会话设置"
+                            case 2: return "队列下载"
+                            case 3: return "会话设置"
                             default: return ""
                         }
                     }
@@ -339,6 +361,7 @@ ApplicationWindow {
 
                 DownloadPage {}
                 ExportPage {}
+                QueuePage {}
                 SessionPage {}
             }
         }
