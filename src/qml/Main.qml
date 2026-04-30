@@ -542,7 +542,7 @@ ApplicationWindow {
                 anchors.leftMargin: 20; anchors.rightMargin: 20
                 spacing: Theme.Theme.spacingM
                 topPadding: 8
-                bottomPadding: 20
+                bottomPadding: 8
 
                 // Spinner while querying
                 Row {
@@ -691,7 +691,7 @@ ApplicationWindow {
         contentItem: Column {
             spacing: Theme.Theme.spacingM
             topPadding: 8
-            bottomPadding: 20
+            bottomPadding: 8
             leftPadding: 20
             rightPadding: 20
 

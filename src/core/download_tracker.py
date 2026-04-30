@@ -129,8 +129,15 @@ def run_chat_export(
             return []
         with open(output_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        # tdl exports either a list or {"id": ..., "messages": [...]}
+        if isinstance(data, dict):
+            records = data.get("messages", [])
+        elif isinstance(data, list):
+            records = data
+        else:
+            records = []
         # Keep only records that have a media file
-        return [item for item in data if isinstance(item, dict) and item.get("file")]
+        return [item for item in records if isinstance(item, dict) and item.get("file")]
     except Exception as e:
         print(f"[export] exception: {e}", flush=True)
         return []
