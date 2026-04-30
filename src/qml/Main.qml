@@ -612,6 +612,7 @@ ApplicationWindow {
                         enabled: preDownloadDialog._queryDone
                         onClicked: {
                             appVM.confirmDownload();
+                            preDownloadDialog.close();
                             preDownloadDialog._queryDone = false;
                             preDownloadDialog._fileList  = [];
                         }
