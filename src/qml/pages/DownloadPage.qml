@@ -376,6 +376,7 @@ Flickable {
         anchors.centerIn: parent
         modal: true
         width: 380
+        height: queueNameDialogContent.implicitHeight + 72
         standardButtons: Dialog.NoButton
 
         background: Rectangle {
@@ -399,9 +400,9 @@ Flickable {
         }
 
         contentItem: Column {
-            width: queueNameDialog.width
+            id: queueNameDialogContent
             spacing: Theme.Theme.spacingM
-            topPadding: 4
+            topPadding: 16
             bottomPadding: 20
             leftPadding: 20
             rightPadding: 20
@@ -435,8 +436,8 @@ Flickable {
                 visible: text.length > 0
             }
 
-            Row {
-                spacing: 8
+            RowLayout {
+                spacing: Theme.Theme.spacingS
 
                 FluentButton {
                     id: queueOkBtn

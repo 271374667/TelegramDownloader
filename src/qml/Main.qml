@@ -387,6 +387,7 @@ ApplicationWindow {
         anchors.centerIn: parent
         modal: true
         width: 380
+        height: floatingQueueDialogContent.implicitHeight + 72
         standardButtons: Dialog.NoButton
 
         background: Rectangle {
@@ -410,9 +411,9 @@ ApplicationWindow {
         }
 
         contentItem: Column {
-            width: floatingQueueDialog.width
+            id: floatingQueueDialogContent
             spacing: Theme.Theme.spacingM
-            topPadding: 4
+            topPadding: 16
             bottomPadding: 20
             leftPadding: 20
             rightPadding: 20
@@ -446,8 +447,8 @@ ApplicationWindow {
                 visible: text.length > 0
             }
 
-            Row {
-                spacing: 8
+            RowLayout {
+                spacing: Theme.Theme.spacingS
 
                 FluentButton {
                     id: fqOkBtn
