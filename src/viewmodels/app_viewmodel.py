@@ -229,20 +229,32 @@ class AppViewModel(QObject):
 
     @Slot()
     def executeQueueBatch(self):
+        if self._is_downloading:
+            self.notificationRequested.emit("下载", "已有下载任务正在进行中", "warning")
+            return
+
         from core.queue_manager import list_queues
         queues = list_queues(self._queue_vm.queueDir)
         session_cfg = self._session_vm.get_config()
         ok, msg = self._batch.generate_queue_batch(
             queues, self._queue_vm.outputDir, session_cfg, auto_close=True
         )
-        if ok:
-            subprocess.Popen(
-                ["cmd", "/c", "start", "", "tdl_queue.bat"],
-                shell=True,
-            )
-            self.notificationRequested.emit("队列下载", f"已启动 {len(queues)} 个队列的下载", "success")
-        else:
+        if not ok:
             self.notificationRequested.emit("队列下载", msg, "error")
+            return
+
+        # Collect all URLs from all active queues for pre-download export query
+        all_urls = []
+        for q in queues:
+            all_urls.extend(q.get("urls", []))
+
+        output_dir = self._queue_vm.outputDir
+        session_args = self._build_session_export_args(
+            self._build_config()  # only session fields are used
+        )
+        queue_bat = str(self._batch.current_dir / "tdl_queue.bat")
+        self._start_tracked_download(all_urls, output_dir, session_args,
+                                     batch_path=queue_bat)
 
     # ── isDownloading property ──────────────────────────────────────
 
@@ -298,8 +310,13 @@ class AppViewModel(QObject):
             args += ["--storage", storage]
         return args
 
-    def _start_tracked_download(self, urls: list, download_dir: str, session_args: list):
-        """Launch the full tracking flow in a background thread."""
+    def _start_tracked_download(self, urls: list, download_dir: str,
+                                 session_args: list, batch_path: str = None):
+        """Launch the full tracking flow in a background thread.
+        
+        Args:
+            batch_path: Override the bat file to run. Defaults to telegram_downloader.bat.
+        """
         self._is_downloading = True
         self.isDownloadingChanged.emit()
 
@@ -308,7 +325,8 @@ class AppViewModel(QObject):
         self._confirm_result = False
 
         tdl_path = str(self._batch.tdl_path)
-        batch_path = str(self._batch.current_dir / self._batch.batch_filename)
+        if batch_path is None:
+            batch_path = str(self._batch.current_dir / self._batch.batch_filename)
 
         def _worker():
             # ── Step 1: Create task record ──────────────────────────
