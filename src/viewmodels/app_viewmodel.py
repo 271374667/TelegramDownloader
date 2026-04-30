@@ -1,6 +1,7 @@
 """Application-level ViewModel – orchestrates core services and sub-VMs."""
 
 import io
+import json
 import math
 import os
 import struct
@@ -14,11 +15,16 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer
 from core.config_manager import FullConfig
 from core.batch_generator import BatchGenerator
 from core.clipboard_monitor import ClipboardMonitor
+from core.task_history import TaskHistoryManager, STATUS_COMPLETED, STATUS_PARTIAL, STATUS_FAILED
+from core.download_tracker import (
+    fetch_expected_files, snapshot_directory, get_new_files, find_failed_urls
+)
 from .session_viewmodel import SessionViewModel
 from .download_viewmodel import DownloadViewModel
 from .export_viewmodel import ExportViewModel
 from .queue_viewmodel import QueueViewModel
 from .url_list_model import UrlListModel
+from .history_viewmodel import HistoryViewModel
 
 
 class AppViewModel(QObject):
@@ -31,7 +37,11 @@ class AppViewModel(QObject):
     clipboardMonitoringChanged = Signal()
     tdlStatusChanged = Signal()
     notificationRequested = Signal(str, str, str)  # title, message, severity
-
+    # ── Download-tracking signals ─────────────────────────────
+    isDownloadingChanged   = Signal()            # bool property changed
+    exportProgressChanged  = Signal(int, int)    # (done_chats, total_chats)
+    exportResultReady      = Signal(list)        # list of {id,file} dicts
+    downloadFinished       = Signal(str, int, int, str)  # status, downloaded, expected, failed_urls_json
     def __init__(
         self,
         session_vm: SessionViewModel,
@@ -58,6 +68,17 @@ class AppViewModel(QObject):
 
         # Internal state – export preview
         self._export_command_preview = ""
+
+        # Internal state – download tracking
+        self._is_downloading  = False
+        self._confirm_event: threading.Event = None   # set when user confirms/cancels
+        self._confirm_result  = False                 # True = confirmed, False = cancelled
+
+        # Task history (persist-queue backed)
+        data_dir = os.path.join(os.getcwd(), ".tdl_data")
+        self._history_mgr = TaskHistoryManager(data_dir)
+        self.history_vm   = HistoryViewModel(self._history_mgr, parent=self)
+        self.history_vm.retryRequested.connect(self._on_retry_requested)
 
         # Core services
         self._batch = BatchGenerator()
@@ -223,6 +244,13 @@ class AppViewModel(QObject):
         else:
             self.notificationRequested.emit("队列下载", msg, "error")
 
+    # ── isDownloading property ──────────────────────────────────────
+
+    def _get_is_downloading(self) -> bool:
+        return self._is_downloading
+
+    isDownloading = Property(bool, _get_is_downloading, notify=isDownloadingChanged)
+
     # ── Batch generation ────────────────────────────────────────────
 
     @Slot(result=bool)
@@ -236,17 +264,187 @@ class AppViewModel(QObject):
 
     @Slot()
     def executeBatch(self):
+        """Smart execute: export → confirm dialog → download → verify → history."""
+        if self._is_downloading:
+            self.notificationRequested.emit("下载", "已有下载任务正在进行中", "warning")
+            return
+
         config = self._build_config()
         ok, msg = self._batch.generate_batch(config, auto_close=True)
-        if ok:
-            subprocess.Popen(
-                ["cmd", "/c", "start", "", "telegram_downloader.bat"],
-                shell=True,
-            )
-            self._url_model.clear()
-            self.notificationRequested.emit("执行", "下载已启动", "success")
-        else:
+        if not ok:
             self.notificationRequested.emit("执行", msg, "error")
+            return
+
+        urls = self._url_model.get_urls()
+        download_dir = config.download.directory
+        if config.download.subfolder_enabled and config.download.subfolder.strip():
+            download_dir = os.path.join(download_dir, config.download.subfolder.strip())
+
+        # Gather session args for chat export
+        session_args = self._build_session_export_args(config)
+
+        self._start_tracked_download(urls, download_dir, session_args)
+
+    def _build_session_export_args(self, config: FullConfig) -> list:
+        """Extract session-related CLI flags for use in tdl chat export."""
+        args = []
+        if config.session.basic_settings_enabled:
+            args += ["-n", config.session.namespace]
+        if config.session.network_settings_enabled:
+            if config.session.proxy.strip():
+                args += ["--proxy", config.session.proxy]
+        if config.session.storage_settings_enabled:
+            storage = f"type={config.session.storage_type},path={config.session.storage_path}"
+            args += ["--storage", storage]
+        return args
+
+    def _start_tracked_download(self, urls: list, download_dir: str, session_args: list):
+        """Launch the full tracking flow in a background thread."""
+        self._is_downloading = True
+        self.isDownloadingChanged.emit()
+
+        # Prepare confirm event
+        self._confirm_event = threading.Event()
+        self._confirm_result = False
+
+        tdl_path = str(self._batch.tdl_path)
+        batch_path = str(self._batch.current_dir / self._batch.batch_filename)
+
+        def _worker():
+            # ── Step 1: Create task record ──────────────────────────
+            task = self._history_mgr.begin_task(urls, download_dir)
+
+            # ── Step 2: Fetch expected file list via chat export ────
+            def _progress(done, total):
+                self.exportProgressChanged.emit(done, total)
+
+            expected = fetch_expected_files(urls, tdl_path, session_args, _progress)
+            task.expected_files = expected
+            task.expected_count = len(expected)
+            self.exportResultReady.emit(expected)   # → QML opens confirm dialog
+
+            # ── Step 3: Wait for user confirmation ─────────────────
+            self._confirm_event.wait()
+
+            if not self._confirm_result:
+                # User cancelled
+                task.status = STATUS_FAILED
+                self._history_mgr.complete_task(task)
+                self.history_vm.refresh()
+                self._is_downloading = False
+                self.isDownloadingChanged.emit()
+                self.downloadFinished.emit("cancelled", 0, task.expected_count, "[]")
+                return
+
+            # ── Step 4: Snapshot directory before download ──────────
+            before = snapshot_directory(download_dir)
+
+            # ── Step 5: Run download (blocking with visible console) ─
+            try:
+                proc = subprocess.Popen(
+                    ["cmd", "/c", batch_path],
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                )
+                proc.wait()
+            except Exception as e:
+                task.status = STATUS_FAILED
+                self._history_mgr.complete_task(task)
+                self.history_vm.refresh()
+                self._is_downloading = False
+                self.isDownloadingChanged.emit()
+                self.downloadFinished.emit("failed", 0, task.expected_count, "[]")
+                return
+
+            # ── Step 6: Verify downloads ────────────────────────────
+            after    = snapshot_directory(download_dir)
+            new_files = get_new_files(before, after)
+            task.new_files        = new_files
+            task.downloaded_count = len(new_files)
+
+            if task.expected_count > 0:
+                if task.downloaded_count >= task.expected_count:
+                    task.status = STATUS_COMPLETED
+                elif task.downloaded_count > 0:
+                    task.status = STATUS_PARTIAL
+                    task.failed_urls = find_failed_urls(
+                        task.expected_files, new_files, urls
+                    )
+                else:
+                    task.status = STATUS_FAILED
+                    task.failed_urls = list(urls)
+            else:
+                # Export failed – judge by whether any files appeared
+                task.status = STATUS_COMPLETED if new_files else STATUS_FAILED
+
+            # ── Step 7: Persist result ──────────────────────────────
+            self._history_mgr.complete_task(task)
+            self.history_vm.refresh()
+
+            failed_urls_json = json.dumps(task.failed_urls, ensure_ascii=False)
+
+            self._is_downloading = False
+            self.isDownloadingChanged.emit()
+            self.downloadFinished.emit(
+                task.status,
+                task.downloaded_count,
+                task.expected_count,
+                failed_urls_json,
+            )
+            # Clear URL model on success/partial
+            if task.status != STATUS_FAILED:
+                self._url_model.clear()
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    # ── Confirm / cancel slots (called from QML dialog) ─────────────
+
+    @Slot()
+    def confirmDownload(self):
+        """User confirmed the pre-download file list dialog."""
+        if self._confirm_event:
+            self._confirm_result = True
+            self._confirm_event.set()
+
+    @Slot()
+    def cancelDownload(self):
+        """User cancelled the pre-download file list dialog."""
+        if self._confirm_event:
+            self._confirm_result = False
+            self._confirm_event.set()
+
+    # ── Retry from history ──────────────────────────────────────────
+
+    def _on_retry_requested(self, urls_json: str, retry_failed_only: bool):
+        """Handle retry requests from the history panel."""
+        try:
+            urls = json.loads(urls_json)
+        except Exception:
+            return
+        if not urls:
+            return
+
+        # Build config for retry
+        config = self._build_config()
+        config.download.urls = urls
+
+        if retry_failed_only:
+            config.download.skip_same = True
+            config.download.restart   = False
+        else:
+            config.download.restart   = True
+            config.download.skip_same = False
+
+        ok, msg = self._batch.generate_batch(config, auto_close=True)
+        if not ok:
+            self.notificationRequested.emit("重试", msg, "error")
+            return
+
+        download_dir = config.download.directory
+        if config.download.subfolder_enabled and config.download.subfolder.strip():
+            download_dir = os.path.join(download_dir, config.download.subfolder.strip())
+
+        session_args = self._build_session_export_args(config)
+        self._start_tracked_download(urls, download_dir, session_args)
 
     # ── Login ───────────────────────────────────────────────────────
 

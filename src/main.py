@@ -80,7 +80,8 @@ def main():
     engine = QQmlApplicationEngine()
 
     # Keep explicit Python references to prevent GC
-    engine._vm_refs = [app_vm, session_vm, download_vm, export_vm, queue_vm, url_model]
+    engine._vm_refs = [app_vm, session_vm, download_vm, export_vm, queue_vm, url_model,
+                        app_vm.history_vm]
 
     # Add QML import paths
     qml_dir = Path(__file__).parent / "qml"
@@ -94,6 +95,7 @@ def main():
     ctx.setContextProperty("exportVM", export_vm)
     ctx.setContextProperty("queueVM", queue_vm)
     ctx.setContextProperty("urlModel", url_model)
+    ctx.setContextProperty("historyVM", app_vm.history_vm)
 
     # Load main QML
     qml_path = qml_dir / "Main.qml"

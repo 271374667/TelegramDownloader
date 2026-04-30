@@ -136,6 +136,7 @@ ApplicationWindow {
                         ListElement { label: "📤  消息导出"; pageIndex: 1 }
                         ListElement { label: "📦  队列下载"; pageIndex: 2 }
                         ListElement { label: "⚙  会话设置"; pageIndex: 3 }
+                        ListElement { label: "📜  历史任务"; pageIndex: 4 }
                     }
                     delegate: Rectangle {
                         width: parent.width
@@ -168,6 +169,26 @@ ApplicationWindow {
                             color: pageStack.currentIndex === model.pageIndex
                                 ? Theme.Theme.textPrimary
                                 : Theme.Theme.textSecondary
+                        }
+
+                        // History failed-task badge
+                        Rectangle {
+                            visible: model.pageIndex === 4 && historyVM.failedCount > 0
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(22, historyBadgeText.implicitWidth + 10)
+                            height: 20
+                            radius: 10
+                            color: Theme.Theme.error
+
+                            Text {
+                                id: historyBadgeText
+                                anchors.centerIn: parent
+                                text: historyVM.failedCount
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                color: "#FFFFFF"
+                            }
                         }
 
                         // URL count badge on download tab
@@ -296,6 +317,7 @@ ApplicationWindow {
                             case 1: return "消息导出"
                             case 2: return "队列下载"
                             case 3: return "会话设置"
+                            case 4: return "历史任务"
                             default: return ""
                         }
                     }
@@ -328,6 +350,7 @@ ApplicationWindow {
                 ExportPage {}
                 QueuePage {}
                 SessionPage {}
+                HistoryPage {}
             }
         }
     }
@@ -458,6 +481,270 @@ ApplicationWindow {
         target: appVM
         function onNotificationRequested(title, message, severity) {
             infoBar.show(title, message, severity);
+        }
+        function onExportResultReady(files) {
+            preDownloadDialog._fileList = files;
+            preDownloadDialog._queryDone = true;
+        }
+        function onDownloadFinished(status, downloaded, expected, failedUrlsJson) {
+            preDownloadDialog.close();
+            downloadResultDialog.resultStatus  = status;
+            downloadResultDialog.downloaded    = downloaded;
+            downloadResultDialog.expected      = expected;
+            downloadResultDialog.failedUrlsJson = failedUrlsJson;
+            downloadResultDialog.open();
+            historyVM.refresh();
+        }
+    }
+
+    // ── Pre-download confirm dialog ────────────────────────────────
+    Dialog {
+        id: preDownloadDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 500
+        closePolicy: Dialog.NoAutoClose
+        standardButtons: Dialog.NoButton
+
+        property var  _fileList:  []
+        property bool _queryDone: false
+
+        background: Rectangle {
+            color: Theme.Theme.surface
+            radius: Theme.Theme.radiusMedium
+            border.width: 1
+            border.color: Theme.Theme.cardBorder
+        }
+
+        header: Item {
+            height: 52
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: preDownloadDialog._queryDone ? "确认下载文件" : "正在查询文件信息..."
+                font.pixelSize: Theme.Theme.fontSizeSubtitle
+                font.weight: Font.DemiBold
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textPrimary
+            }
+        }
+
+        contentItem: Column {
+            spacing: Theme.Theme.spacingM
+            topPadding: 8
+            bottomPadding: 20
+            leftPadding: 20
+            rightPadding: 20
+
+            // Spinner while querying
+            Row {
+                visible: !preDownloadDialog._queryDone
+                spacing: Theme.Theme.spacingS
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                BusyIndicator {
+                    running: !preDownloadDialog._queryDone
+                    width: 28; height: 28
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "正在通过 tdl chat export 获取文件列表..."
+                    font.pixelSize: Theme.Theme.fontSizeBody
+                    font.family: Theme.Theme.fontFamily
+                    color: Theme.Theme.textSecondary
+                }
+            }
+
+            // Summary when done
+            Text {
+                visible: preDownloadDialog._queryDone
+                width: parent.width - 40
+                text: preDownloadDialog._fileList.length > 0
+                      ? "共检测到 " + preDownloadDialog._fileList.length + " 个待下载文件："
+                      : "未能获取文件详情（链接可能不支持预查询），将直接开始下载。"
+                font.pixelSize: Theme.Theme.fontSizeBody
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textPrimary
+                wrapMode: Text.Wrap
+            }
+
+            // File list preview (scrollable, max height 220)
+            Rectangle {
+                visible: preDownloadDialog._queryDone && preDownloadDialog._fileList.length > 0
+                width: parent.width - 40
+                height: Math.min(220, fileListView.contentHeight + 2)
+                color: Theme.Theme.background
+                radius: 4
+                border.width: 1
+                border.color: Theme.Theme.divider
+
+                ListView {
+                    id: fileListView
+                    anchors.fill: parent
+                    anchors.margins: 6
+                    clip: true
+                    model: preDownloadDialog._fileList
+                    delegate: Text {
+                        width: fileListView.width
+                        text: (index + 1) + ".  " + (modelData.file || "(无文件名)")
+                        font.pixelSize: Theme.Theme.fontSizeCaption
+                        font.family: Theme.Theme.fontFamily
+                        color: Theme.Theme.textSecondary
+                        elide: Text.ElideMiddle
+                    }
+                }
+            }
+
+            // Buttons
+            RowLayout {
+                width: parent.width - 40
+                spacing: Theme.Theme.spacingS
+
+                FluentButton {
+                    text: "开始下载"
+                    variant: "accent"
+                    enabled: preDownloadDialog._queryDone
+                    onClicked: {
+                        appVM.confirmDownload();
+                        preDownloadDialog._queryDone = false;
+                        preDownloadDialog._fileList  = [];
+                    }
+                }
+
+                FluentButton {
+                    text: "取消"
+                    variant: "subtle"
+                    onClicked: {
+                        appVM.cancelDownload();
+                        preDownloadDialog.close();
+                        preDownloadDialog._queryDone = false;
+                        preDownloadDialog._fileList  = [];
+                    }
+                }
+            }
+        }
+
+        // Open automatically when download starts (triggered by isDownloading going true)
+        Connections {
+            target: appVM
+            function onIsDownloadingChanged() {
+                if (appVM.isDownloading) {
+                    preDownloadDialog._queryDone = false;
+                    preDownloadDialog._fileList  = [];
+                    preDownloadDialog.open();
+                }
+            }
+        }
+    }
+
+    // ── Post-download result dialog ────────────────────────────────
+    Dialog {
+        id: downloadResultDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 440
+        closePolicy: Dialog.CloseOnEscape | Dialog.CloseOnPressOutside
+        standardButtons: Dialog.NoButton
+
+        property string resultStatus:   "completed"
+        property int    downloaded:      0
+        property int    expected:        0
+        property string failedUrlsJson: "[]"
+
+        background: Rectangle {
+            color: Theme.Theme.surface
+            radius: Theme.Theme.radiusMedium
+            border.width: 1
+            border.color: Theme.Theme.cardBorder
+        }
+
+        header: Item {
+            height: 52
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: {
+                    switch (downloadResultDialog.resultStatus) {
+                        case "completed":  return "✅  下载完成"
+                        case "partial":    return "⚠️  部分文件未下载"
+                        case "failed":     return "❌  下载失败"
+                        case "cancelled":  return "⛔  已取消"
+                        default:           return "下载结果"
+                    }
+                }
+                font.pixelSize: Theme.Theme.fontSizeSubtitle
+                font.weight: Font.DemiBold
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textPrimary
+            }
+        }
+
+        contentItem: Column {
+            spacing: Theme.Theme.spacingM
+            topPadding: 8
+            bottomPadding: 20
+            leftPadding: 20
+            rightPadding: 20
+
+            Text {
+                width: parent.width - 40
+                text: {
+                    var r = downloadResultDialog;
+                    if (r.resultStatus === "completed") {
+                        return "所有文件已成功下载" +
+                               (r.expected > 0 ? "（共 " + r.expected + " 个）" : "") + "。";
+                    } else if (r.resultStatus === "partial") {
+                        return "已下载 " + r.downloaded + " 个文件，" +
+                               (r.expected - r.downloaded) + " 个文件未能下载。\n" +
+                               "是否重新下载缺失的文件？";
+                    } else if (r.resultStatus === "failed") {
+                        return "本次下载未检测到新文件，可能全部失败。\n是否重试？";
+                    } else {
+                        return "下载已取消。";
+                    }
+                }
+                font.pixelSize: Theme.Theme.fontSizeBody
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textPrimary
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                width: parent.width - 40
+                spacing: Theme.Theme.spacingS
+
+                // Retry failed items button (partial / failed)
+                FluentButton {
+                    visible: downloadResultDialog.resultStatus === "partial" ||
+                             downloadResultDialog.resultStatus === "failed"
+                    text: "重新下载失败项"
+                    variant: "accent"
+                    onClicked: {
+                        downloadResultDialog.close();
+                        var urls = JSON.parse(downloadResultDialog.failedUrlsJson);
+                        if (urls.length > 0) {
+                            for (var i = 0; i < urls.length; i++) urlModel.addUrl(urls[i]);
+                        }
+                        appVM.executeBatch();
+                    }
+                }
+
+                FluentButton {
+                    visible: downloadResultDialog.resultStatus !== "cancelled"
+                    text: downloadResultDialog.resultStatus === "completed" ? "确定" : "跳过"
+                    variant: downloadResultDialog.resultStatus === "completed" ? "accent" : "subtle"
+                    onClicked: downloadResultDialog.close()
+                }
+
+                FluentButton {
+                    visible: downloadResultDialog.resultStatus === "cancelled"
+                    text: "确定"
+                    variant: "accent"
+                    onClicked: downloadResultDialog.close()
+                }
+            }
         }
     }
 
