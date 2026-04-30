@@ -142,6 +142,14 @@ Flickable {
                     }
 
                     FluentButton {
+                        text: "立即下载"
+                        variant: "accent"
+                        iconText: "▶"
+                        enabled: urlModel.count > 0 && !appVM.isDownloading
+                        onClicked: appVM.executeBatch()
+                    }
+
+                    FluentButton {
                         text: "从剪贴板导入"
                         variant: "subtle"
                         iconText: "📋"
