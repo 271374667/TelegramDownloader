@@ -11,6 +11,7 @@ Item {
     signal clearRequested()
     signal generateRequested()
     signal executeRequested()
+    signal queueRequested()
     signal showMainRequested()
     signal closeRequested()
 
@@ -227,6 +228,14 @@ Item {
                     bgColor: Theme.Theme.accentDark
                     enabled: root.urlCount > 0
                     onClicked: root.executeRequested()
+                }
+
+                // Export to queue
+                PanelButton {
+                    text: "入队列"
+                    bgColor: "#2E7D32"
+                    enabled: root.urlCount > 0
+                    onClicked: root.queueRequested()
                 }
 
                 // Show main

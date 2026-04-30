@@ -375,40 +375,35 @@ Flickable {
         parent: Overlay.overlay
         anchors.centerIn: parent
         modal: true
-        title: "导出到下载队列"
         width: 380
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        standardButtons: Dialog.NoButton
 
-        onOpened: {
-            queueNameInput.text = ""
-            queueErrorText.text = ""
-            queueNameInput.forceActiveFocus()
+        background: Rectangle {
+            color: Theme.Theme.surface
+            radius: Theme.Theme.radiusMedium
+            border.width: 1
+            border.color: Theme.Theme.cardBorder
         }
 
-        onAccepted: {
-            var name = queueNameInput.text.trim()
-            if (!name) {
-                queueErrorText.text = "队列名称不能为空"
-                return
-            }
-            if (queueVM.nameExists(name)) {
-                queueErrorText.text = "队列「" + name + "」已存在，请换一个名称"
-                return
-            }
-            var err = appVM.exportToQueue(name)
-            if (err) {
-                queueErrorText.text = err
-            } else {
-                queueNameDialog.close()
+        header: Item {
+            height: 48
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: "导出到下载队列"
+                font.pixelSize: Theme.Theme.fontSizeSubtitle
+                font.family: Theme.Theme.fontFamily
+                font.weight: Font.DemiBold
+                color: Theme.Theme.textPrimary
             }
         }
 
-        Column {
-            width: parent.width
-            spacing: Theme.Theme.spacingS
+        contentItem: Column {
+            spacing: Theme.Theme.spacingM
+            padding: 20
 
             Text {
-                width: parent.width
+                width: parent.width - 40
                 text: "当前链接列表（" + urlModel.count + " 个）将保存为队列，不会立即下载。"
                 font.pixelSize: Theme.Theme.fontSizeBody
                 font.family: Theme.Theme.fontFamily
@@ -418,16 +413,16 @@ Flickable {
 
             FluentTextField {
                 id: queueNameInput
-                width: parent.width
+                width: parent.width - 40
                 label: "队列名称"
                 placeholderText: "例如：频道A第1批"
-                Keys.onReturnPressed: queueNameDialog.accept()
-                Keys.onEnterPressed: queueNameDialog.accept()
+                Keys.onReturnPressed: queueOkBtn.clicked()
+                Keys.onEnterPressed: queueOkBtn.clicked()
             }
 
             Text {
                 id: queueErrorText
-                width: parent.width
+                width: parent.width - 40
                 text: ""
                 font.pixelSize: Theme.Theme.fontSizeCaption
                 font.family: Theme.Theme.fontFamily
@@ -435,6 +430,37 @@ Flickable {
                 wrapMode: Text.Wrap
                 visible: text.length > 0
             }
+
+            RowLayout {
+                spacing: Theme.Theme.spacingS
+
+                FluentButton {
+                    id: queueOkBtn
+                    text: "确定"
+                    variant: "accent"
+                    onClicked: {
+                        var name = queueNameInput.text.trim()
+                        if (!name) { queueErrorText.text = "队列名称不能为空"; return }
+                        if (queueVM.nameExists(name)) {
+                            queueErrorText.text = "队列「" + name + "」已存在，请换一个名称"; return
+                        }
+                        var err = appVM.exportToQueue(name)
+                        if (err) { queueErrorText.text = err } else { queueNameDialog.close() }
+                    }
+                }
+
+                FluentButton {
+                    text: "取消"
+                    variant: "subtle"
+                    onClicked: queueNameDialog.close()
+                }
+            }
+        }
+
+        onOpened: {
+            queueNameInput.text = ""
+            queueErrorText.text = ""
+            queueNameInput.forceActiveFocus()
         }
     }
 }

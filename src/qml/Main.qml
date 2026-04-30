@@ -375,8 +375,104 @@ ApplicationWindow {
         onClearRequested: urlModel.clear()
         onGenerateRequested: appVM.generateBatch()
         onExecuteRequested: appVM.executeBatch()
+        onQueueRequested: floatingQueueDialog.open()
         onShowMainRequested: { window.show(); window.raise(); window.requestActivate(); }
         onCloseRequested: appVM.floatingPanelVisible = false
+    }
+
+    // ── Floating queue-name dialog ─────────────────────────────────
+    Dialog {
+        id: floatingQueueDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        width: 380
+        standardButtons: Dialog.NoButton
+
+        background: Rectangle {
+            color: Theme.Theme.surface
+            radius: Theme.Theme.radiusMedium
+            border.width: 1
+            border.color: Theme.Theme.cardBorder
+        }
+
+        header: Item {
+            height: 48
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: "导出到下载队列"
+                font.pixelSize: Theme.Theme.fontSizeSubtitle
+                font.family: Theme.Theme.fontFamily
+                font.weight: Font.DemiBold
+                color: Theme.Theme.textPrimary
+            }
+        }
+
+        contentItem: Column {
+            spacing: Theme.Theme.spacingM
+            padding: 20
+
+            Text {
+                width: parent.width - 40
+                text: "当前链接列表（" + urlModel.count + " 个）将保存为队列，不会立即下载。"
+                font.pixelSize: Theme.Theme.fontSizeBody
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.textSecondary
+                wrapMode: Text.Wrap
+            }
+
+            FluentTextField {
+                id: fqInput
+                width: parent.width - 40
+                label: "队列名称"
+                placeholderText: "例如：频道A第1批"
+                Keys.onReturnPressed: fqOkBtn.clicked()
+                Keys.onEnterPressed: fqOkBtn.clicked()
+            }
+
+            Text {
+                id: fqError
+                width: parent.width - 40
+                text: ""
+                font.pixelSize: Theme.Theme.fontSizeCaption
+                font.family: Theme.Theme.fontFamily
+                color: Theme.Theme.error
+                wrapMode: Text.Wrap
+                visible: text.length > 0
+            }
+
+            RowLayout {
+                spacing: Theme.Theme.spacingS
+
+                FluentButton {
+                    id: fqOkBtn
+                    text: "确定"
+                    variant: "accent"
+                    onClicked: {
+                        var name = fqInput.text.trim()
+                        if (!name) { fqError.text = "队列名称不能为空"; return }
+                        if (queueVM.nameExists(name)) {
+                            fqError.text = "队列「" + name + "」已存在，请换一个名称"; return
+                        }
+                        var err = appVM.exportToQueue(name)
+                        if (err) { fqError.text = err } else { floatingQueueDialog.close() }
+                    }
+                }
+
+                FluentButton {
+                    text: "取消"
+                    variant: "subtle"
+                    onClicked: floatingQueueDialog.close()
+                }
+            }
+        }
+
+        onOpened: {
+            fqInput.text = ""
+            fqError.text = ""
+            fqInput.forceActiveFocus()
+        }
     }
 
     // ── InfoBar (notifications) ────────────────────────────────────
