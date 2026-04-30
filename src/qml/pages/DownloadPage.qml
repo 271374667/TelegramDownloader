@@ -399,8 +399,12 @@ Flickable {
         }
 
         contentItem: Column {
+            width: queueNameDialog.width
             spacing: Theme.Theme.spacingM
-            padding: 20
+            topPadding: 4
+            bottomPadding: 20
+            leftPadding: 20
+            rightPadding: 20
 
             Text {
                 width: parent.width - 40
@@ -431,9 +435,8 @@ Flickable {
                 visible: text.length > 0
             }
 
-            RowLayout {
-                width: parent.width - 40
-                spacing: Theme.Theme.spacingS
+            Row {
+                spacing: 8
 
                 FluentButton {
                     id: queueOkBtn
