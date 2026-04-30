@@ -286,12 +286,17 @@ pause
         output_dir: str,
         session_cfg,
         auto_close: bool = True,
+        download_cfg_template=None,
     ) -> tuple[bool, str]:
         """Generate a single bat file that downloads every queue in sequence.
 
         Each queue gets its own subfolder: ``{name}_{uuid_segment}`` inside
         *output_dir*.  ``--continue`` and ``--skip-same`` are always added so
         already-downloaded files are never re-fetched.
+
+        *download_cfg_template* (optional DownloadConfig) supplies extra flags
+        like threads, limit, template, rewrite_ext, desc, etc. Per-queue urls
+        and directory are always overridden.
         """
         from .config_manager import DownloadConfig, FullConfig
 
@@ -319,15 +324,22 @@ pause
             urls: list[str] = q.get("urls", [])
             target_dir = os.path.join(output_dir, f"{name}_{seg}")
 
-            cfg = FullConfig(
-                session=session_cfg,
-                download=DownloadConfig(
+            if download_cfg_template is not None:
+                import copy
+                dl = copy.copy(download_cfg_template)
+                dl.urls = urls
+                dl.directory = target_dir
+                dl.continue_last = True
+                dl.skip_same = True
+                dl.subfolder_enabled = False  # subfolder already baked into target_dir
+            else:
+                dl = DownloadConfig(
                     urls=urls,
                     directory=target_dir,
                     continue_last=True,
                     skip_same=True,
-                ),
-            )
+                )
+            cfg = FullConfig(session=session_cfg, download=dl)
             args = cfg.get_command_args()
             cmd_parts = []
             for arg in args:

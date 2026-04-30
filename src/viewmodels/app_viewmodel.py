@@ -219,8 +219,10 @@ class AppViewModel(QObject):
         from core.queue_manager import list_queues
         queues = list_queues(self._queue_vm.queueDir)
         session_cfg = self._session_vm.get_config()
+        download_cfg = self._download_vm.get_config()
         ok, msg = self._batch.generate_queue_batch(
-            queues, self._queue_vm.outputDir, session_cfg, auto_close=False
+            queues, self._queue_vm.outputDir, session_cfg,
+            auto_close=False, download_cfg_template=download_cfg
         )
         self.notificationRequested.emit(
             "生成队列批处理", msg, "success" if ok else "error"
@@ -236,8 +238,10 @@ class AppViewModel(QObject):
         from core.queue_manager import list_queues
         queues = list_queues(self._queue_vm.queueDir)
         session_cfg = self._session_vm.get_config()
+        download_cfg = self._download_vm.get_config()  # apply user download settings
         ok, msg = self._batch.generate_queue_batch(
-            queues, self._queue_vm.outputDir, session_cfg, auto_close=True
+            queues, self._queue_vm.outputDir, session_cfg,
+            auto_close=True, download_cfg_template=download_cfg
         )
         if not ok:
             self.notificationRequested.emit("队列下载", msg, "error")
