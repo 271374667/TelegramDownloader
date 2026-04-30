@@ -153,6 +153,7 @@ class TaskHistoryManager:
             path=queue_path,
             name="downloads",
             auto_commit=True,
+            multithreading=True,
         )
 
         # On startup, any unacknowledged tasks from a previous crash → mark failed

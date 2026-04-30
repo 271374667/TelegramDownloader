@@ -332,27 +332,31 @@ class AppViewModel(QObject):
             # ── Step 1: Create task record ──────────────────────────
             task = self._history_mgr.begin_task(urls, download_dir)
 
-            # ── Step 2: Fetch expected file list via chat export ────
-            def _progress(done, total):
-                self.exportProgressChanged.emit(done, total)
+            # ── Step 2: Optionally fetch expected file list & confirm ──
+            if self._download_vm.preDownloadCheck:
+                def _progress(done, total):
+                    self.exportProgressChanged.emit(done, total)
 
-            expected = fetch_expected_files(urls, tdl_path, session_args, _progress)
-            task.expected_files = expected
-            task.expected_count = len(expected)
-            self.exportResultReady.emit(expected)   # → QML opens confirm dialog
+                expected = fetch_expected_files(urls, tdl_path, session_args, _progress)
+                task.expected_files = expected
+                task.expected_count = len(expected)
+                self.exportResultReady.emit(expected)   # → QML opens confirm dialog
 
-            # ── Step 3: Wait for user confirmation ─────────────────
-            self._confirm_event.wait()
+                # Wait for user confirmation
+                self._confirm_event.wait()
 
-            if not self._confirm_result:
-                # User cancelled
-                task.status = STATUS_FAILED
-                self._history_mgr.complete_task(task)
-                self.history_vm.refresh()
-                self._is_downloading = False
-                self.isDownloadingChanged.emit()
-                self.downloadFinished.emit("cancelled", 0, task.expected_count, "[]")
-                return
+                if not self._confirm_result:
+                    task.status = STATUS_FAILED
+                    self._history_mgr.complete_task(task)
+                    self.history_vm.refresh()
+                    self._is_downloading = False
+                    self.isDownloadingChanged.emit()
+                    self.downloadFinished.emit("cancelled", 0, task.expected_count, "[]")
+                    return
+            else:
+                # Skip pre-check – go straight to download
+                task.expected_files = []
+                task.expected_count = 0
 
             # ── Step 4: Snapshot directory before download ──────────
             before = snapshot_directory(download_dir)

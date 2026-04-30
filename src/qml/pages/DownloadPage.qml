@@ -271,6 +271,11 @@ Flickable {
                     checked: downloadVM.restart
                     onCheckedChanged: downloadVM.restart = checked
                 }
+                FluentCheckBox {
+                    text: "下载前预检查文件列表"
+                    checked: downloadVM.preDownloadCheck
+                    onCheckedChanged: downloadVM.preDownloadCheck = checked
+                }
             }
         }
 

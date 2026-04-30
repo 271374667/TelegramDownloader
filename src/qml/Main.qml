@@ -530,96 +530,99 @@ ApplicationWindow {
             }
         }
 
-        contentItem: Column {
-            spacing: Theme.Theme.spacingM
-            topPadding: 8
-            bottomPadding: 20
-            leftPadding: 20
-            rightPadding: 20
+        contentItem: Item {
+            implicitHeight: _dlgCol.implicitHeight
 
-            // Spinner while querying
-            Row {
-                visible: !preDownloadDialog._queryDone
-                spacing: Theme.Theme.spacingS
-                anchors.horizontalCenter: parent.horizontalCenter
+            Column {
+                id: _dlgCol
+                anchors { left: parent.left; right: parent.right; top: parent.top }
+                anchors.leftMargin: 20; anchors.rightMargin: 20
+                spacing: Theme.Theme.spacingM
+                topPadding: 8
+                bottomPadding: 20
 
-                BusyIndicator {
-                    running: !preDownloadDialog._queryDone
-                    width: 28; height: 28
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "正在通过 tdl chat export 获取文件列表..."
-                    font.pixelSize: Theme.Theme.fontSizeBody
-                    font.family: Theme.Theme.fontFamily
-                    color: Theme.Theme.textSecondary
-                }
-            }
+                // Spinner while querying
+                Row {
+                    visible: !preDownloadDialog._queryDone
+                    spacing: Theme.Theme.spacingS
 
-            // Summary when done
-            Text {
-                visible: preDownloadDialog._queryDone
-                width: parent.width - 40
-                text: preDownloadDialog._fileList.length > 0
-                      ? "共检测到 " + preDownloadDialog._fileList.length + " 个待下载文件："
-                      : "未能获取文件详情（链接可能不支持预查询），将直接开始下载。"
-                font.pixelSize: Theme.Theme.fontSizeBody
-                font.family: Theme.Theme.fontFamily
-                color: Theme.Theme.textPrimary
-                wrapMode: Text.Wrap
-            }
-
-            // File list preview (scrollable, max height 220)
-            Rectangle {
-                visible: preDownloadDialog._queryDone && preDownloadDialog._fileList.length > 0
-                width: parent.width - 40
-                height: Math.min(220, fileListView.contentHeight + 2)
-                color: Theme.Theme.background
-                radius: 4
-                border.width: 1
-                border.color: Theme.Theme.divider
-
-                ListView {
-                    id: fileListView
-                    anchors.fill: parent
-                    anchors.margins: 6
-                    clip: true
-                    model: preDownloadDialog._fileList
-                    delegate: Text {
-                        width: fileListView.width
-                        text: (index + 1) + ".  " + (modelData.file || "(无文件名)")
-                        font.pixelSize: Theme.Theme.fontSizeCaption
+                    BusyIndicator {
+                        running: !preDownloadDialog._queryDone
+                        width: 28; height: 28
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "正在通过 tdl chat export 获取文件列表..."
+                        font.pixelSize: Theme.Theme.fontSizeBody
                         font.family: Theme.Theme.fontFamily
                         color: Theme.Theme.textSecondary
-                        elide: Text.ElideMiddle
-                    }
-                }
-            }
-
-            // Buttons
-            RowLayout {
-                width: parent.width - 40
-                spacing: Theme.Theme.spacingS
-
-                FluentButton {
-                    text: "开始下载"
-                    variant: "accent"
-                    enabled: preDownloadDialog._queryDone
-                    onClicked: {
-                        appVM.confirmDownload();
-                        preDownloadDialog._queryDone = false;
-                        preDownloadDialog._fileList  = [];
                     }
                 }
 
-                FluentButton {
-                    text: "取消"
-                    variant: "subtle"
-                    onClicked: {
-                        appVM.cancelDownload();
-                        preDownloadDialog.close();
-                        preDownloadDialog._queryDone = false;
-                        preDownloadDialog._fileList  = [];
+                // Summary when done
+                Text {
+                    visible: preDownloadDialog._queryDone
+                    width: parent.width
+                    text: preDownloadDialog._fileList.length > 0
+                          ? "共检测到 " + preDownloadDialog._fileList.length + " 个待下载文件："
+                          : "未能获取文件详情（链接可能不支持预查询），将直接开始下载。"
+                    font.pixelSize: Theme.Theme.fontSizeBody
+                    font.family: Theme.Theme.fontFamily
+                    color: Theme.Theme.textPrimary
+                    wrapMode: Text.Wrap
+                }
+
+                // File list preview (scrollable, max height 220)
+                Rectangle {
+                    visible: preDownloadDialog._queryDone && preDownloadDialog._fileList.length > 0
+                    width: parent.width
+                    height: Math.min(220, fileListView.contentHeight + 12)
+                    color: Theme.Theme.background
+                    radius: 4
+                    border.width: 1
+                    border.color: Theme.Theme.divider
+
+                    ListView {
+                        id: fileListView
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        clip: true
+                        model: preDownloadDialog._fileList
+                        delegate: Text {
+                            width: fileListView.width
+                            text: (index + 1) + ".  " + (modelData.file || "(无文件名)")
+                            font.pixelSize: Theme.Theme.fontSizeCaption
+                            font.family: Theme.Theme.fontFamily
+                            color: Theme.Theme.textSecondary
+                            elide: Text.ElideMiddle
+                        }
+                    }
+                }
+
+                // Buttons
+                Row {
+                    spacing: Theme.Theme.spacingS
+
+                    FluentButton {
+                        text: "开始下载"
+                        variant: "accent"
+                        enabled: preDownloadDialog._queryDone
+                        onClicked: {
+                            appVM.confirmDownload();
+                            preDownloadDialog._queryDone = false;
+                            preDownloadDialog._fileList  = [];
+                        }
+                    }
+
+                    FluentButton {
+                        text: "取消"
+                        variant: "subtle"
+                        onClicked: {
+                            appVM.cancelDownload();
+                            preDownloadDialog.close();
+                            preDownloadDialog._queryDone = false;
+                            preDownloadDialog._fileList  = [];
+                        }
                     }
                 }
             }
@@ -629,7 +632,7 @@ ApplicationWindow {
         Connections {
             target: appVM
             function onIsDownloadingChanged() {
-                if (appVM.isDownloading) {
+                if (appVM.isDownloading && downloadVM.preDownloadCheck) {
                     preDownloadDialog._queryDone = false;
                     preDownloadDialog._fileList  = [];
                     preDownloadDialog.open();

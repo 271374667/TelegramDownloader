@@ -29,6 +29,7 @@ class DownloadViewModel(QObject):
     filteringEnabledChanged = Signal()
     advancedEnabledChanged = Signal()
     serverEnabledChanged = Signal()
+    preDownloadCheckChanged = Signal()
 
     configChanged = Signal()
 
@@ -54,6 +55,7 @@ class DownloadViewModel(QObject):
         self._filteringEnabled = False
         self._advancedEnabled = False
         self._serverEnabled = False
+        self._preDownloadCheck = True
 
     def _set(self, attr, value, signal):
         if getattr(self, attr) != value:
@@ -179,3 +181,7 @@ class DownloadViewModel(QObject):
     def _get_serverEnabled(self): return self._serverEnabled
     def _set_serverEnabled(self, v): self._set("_serverEnabled", v, self.serverEnabledChanged)
     serverEnabled = Property(bool, _get_serverEnabled, _set_serverEnabled, notify=serverEnabledChanged)
+
+    def _get_preDownloadCheck(self): return self._preDownloadCheck
+    def _set_preDownloadCheck(self, v): self._set("_preDownloadCheck", v, self.preDownloadCheckChanged)
+    preDownloadCheck = Property(bool, _get_preDownloadCheck, _set_preDownloadCheck, notify=preDownloadCheckChanged)
