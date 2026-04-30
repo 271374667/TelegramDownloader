@@ -84,27 +84,28 @@ def get_new_files(before: Dict[str, int], after: Dict[str, int]) -> List[str]:
 def run_chat_export(
     tdl_path: str,
     chat_id: str,
-    msg_ids: List[int],
+    min_id: int,
+    max_id: int,
     session_args: List[str],
     output_path: str,
     timeout: int = 90,
 ) -> List[Dict]:
-    """Run ``tdl chat export -T id`` and return media records (with 'file' field).
+    """Run ``tdl chat export -T id -i min_id,max_id`` and return all media records.
 
-    Returns list of dicts: [{id, file, ...}]
+    Uses a single range query (min,max) instead of per-ID calls.
+    Returns list of dicts with at least {"id": int, "file": str, ...}.
     """
-    if not msg_ids:
-        return []
+    # Single ID: -i 5485,5485 (range of one)
+    id_range = f"{min_id},{max_id}"
 
     args = [
         tdl_path, "chat", "export",
         "-c", str(chat_id),
         "-T", "id",
+        "-i", id_range,
         "-o", output_path,
     ]
     args += session_args
-    for mid in msg_ids:
-        args += ["-i", str(mid)]
 
     try:
         result = subprocess.run(
@@ -117,8 +118,11 @@ def run_chat_export(
         )
         if result.returncode != 0:
             return []
+        if not os.path.exists(output_path):
+            return []
         with open(output_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        # Keep only records that have a media file
         return [item for item in data if isinstance(item, dict) and item.get("file")]
     except Exception:
         return []
@@ -132,13 +136,13 @@ def fetch_expected_files(
 ) -> List[Dict]:
     """For all URLs, run chat export and return expected file records.
 
-    Each record: ``{"id": int, "file": str, "chat": str, "url": str}``
+    Strategy:
+      1. Group URLs by chat_id.
+      2. For each chat, compute min/max message ID → one ``-T id -i min,max`` call.
+      3. Filter returned records to only those whose IDs are in the requested set.
+      4. This minimises tdl invocations while keeping all logic in Python.
 
-    Args:
-        urls: Telegram share URLs
-        tdl_path: Absolute path to tdl.exe
-        session_args: Extra CLI flags for session (proxy, namespace, etc.)
-        progress_callback: Called with (done_chats, total_chats) after each chat
+    Each result record: ``{"id": int, "file": str, "chat": str, "url": str}``
     """
     groups = group_urls_by_chat(urls)
     result: List[Dict] = []
@@ -146,8 +150,12 @@ def fetch_expected_files(
     done = 0
 
     for chat_id, pairs in groups.items():
-        msg_ids  = [mid  for mid, _   in pairs]
-        url_map  = {mid: url for mid, url in pairs}
+        # Build a set of wanted IDs and a url lookup map
+        wanted_ids: set = {mid for mid, _ in pairs}
+        url_map: Dict[int, str] = {mid: url for mid, url in pairs}
+
+        min_id = min(wanted_ids)
+        max_id = max(wanted_ids)
 
         with tempfile.NamedTemporaryFile(
             suffix=".json", delete=False, mode="w", encoding="utf-8"
@@ -155,15 +163,21 @@ def fetch_expected_files(
             tmp_path = f.name
 
         try:
-            records = run_chat_export(tdl_path, chat_id, msg_ids, session_args, tmp_path)
-            for rec in records:
+            # Fetch entire [min_id, max_id] range in one call
+            all_records = run_chat_export(
+                tdl_path, chat_id, min_id, max_id, session_args, tmp_path
+            )
+
+            # Keep only the records whose IDs were in our URL list
+            for rec in all_records:
                 mid = rec.get("id")
-                result.append({
-                    "id":   mid,
-                    "file": rec.get("file", ""),
-                    "chat": chat_id,
-                    "url":  url_map.get(mid, ""),
-                })
+                if mid in wanted_ids:
+                    result.append({
+                        "id":   mid,
+                        "file": rec.get("file", ""),
+                        "chat": chat_id,
+                        "url":  url_map.get(mid, ""),
+                    })
         finally:
             try:
                 os.unlink(tmp_path)
