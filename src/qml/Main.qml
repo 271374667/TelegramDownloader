@@ -486,12 +486,13 @@ ApplicationWindow {
             preDownloadDialog._fileList = files;
             preDownloadDialog._queryDone = true;
         }
-        function onDownloadFinished(status, downloaded, expected, failedUrlsJson) {
+        function onDownloadFinished(status, downloaded, expected, failedUrlsJson, taskId) {
             preDownloadDialog.close();
             downloadResultDialog.resultStatus  = status;
             downloadResultDialog.downloaded    = downloaded;
             downloadResultDialog.expected      = expected;
             downloadResultDialog.failedUrlsJson = failedUrlsJson;
+            downloadResultDialog.taskId        = taskId;
             downloadResultDialog.open();
             historyVM.refresh();
         }
@@ -660,6 +661,7 @@ ApplicationWindow {
         property int    downloaded:      0
         property int    expected:        0
         property string failedUrlsJson: "[]"
+        property string taskId:         ""
 
         background: Rectangle {
             color: Theme.Theme.surface
@@ -730,11 +732,9 @@ ApplicationWindow {
                     variant: "accent"
                     onClicked: {
                         downloadResultDialog.close();
-                        var urls = JSON.parse(downloadResultDialog.failedUrlsJson);
-                        if (urls.length > 0) {
-                            for (var i = 0; i < urls.length; i++) urlModel.addUrl(urls[i]);
-                        }
-                        appVM.executeBatch();
+                        appVM.retryTaskUrls(downloadResultDialog.taskId,
+                                            downloadResultDialog.failedUrlsJson,
+                                            true);
                     }
                 }
 

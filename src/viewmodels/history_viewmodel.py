@@ -76,8 +76,8 @@ class HistoryViewModel(QObject):
     failedCountChanged = Signal()
 
     # Emitted when user requests a re-download from history
-    # args: urls_json (JSON string of URL list), retry_failed_only (bool)
-    retryRequested = Signal(str, bool)
+    # args: urls_json (JSON string of URL list), retry_failed_only (bool), task_id
+    retryRequested = Signal(str, bool, str)
 
     def __init__(self, manager: TaskHistoryManager, parent=None):
         super().__init__(parent)
@@ -143,7 +143,7 @@ class HistoryViewModel(QObject):
         if task is None:
             return
         urls = task.retry_urls
-        self.retryRequested.emit(json.dumps(urls, ensure_ascii=False), True)
+        self.retryRequested.emit(json.dumps(urls, ensure_ascii=False), True, task.id)
 
     @Slot(str)
     def restartTask(self, task_id: str):
@@ -151,7 +151,7 @@ class HistoryViewModel(QObject):
         task = self._find_task(task_id)
         if task is None:
             return
-        self.retryRequested.emit(json.dumps(task.urls, ensure_ascii=False), False)
+        self.retryRequested.emit(json.dumps(task.urls, ensure_ascii=False), False, task.id)
 
     @Slot(str)
     def deleteTask(self, task_id: str):

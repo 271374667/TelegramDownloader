@@ -34,11 +34,13 @@ class TaskRecord:
         task_id: str,
         urls: List[str],
         download_dir: str,
+        download_groups: Optional[List[Dict]] = None,
         created_at: float = None,
     ):
         self.id            = task_id
         self.urls          = list(urls)
         self.download_dir  = download_dir
+        self.download_groups = self._normalize_download_groups(download_groups)
         self.created_at    = created_at or time.time()
         self.status        = STATUS_RUNNING
         self.expected_count   = 0
@@ -54,6 +56,7 @@ class TaskRecord:
             "id":               self.id,
             "urls":             self.urls,
             "download_dir":     self.download_dir,
+            "download_groups":  self.download_groups,
             "created_at":       self.created_at,
             "status":           self.status,
             "expected_count":   self.expected_count,
@@ -69,6 +72,7 @@ class TaskRecord:
             task_id      = d.get("id", str(uuid.uuid4())),
             urls         = d.get("urls", []),
             download_dir = d.get("download_dir", ""),
+            download_groups = d.get("download_groups", []),
             created_at   = d.get("created_at", 0.0),
         )
         task.status           = d.get("status", STATUS_FAILED)
@@ -126,6 +130,19 @@ class TaskRecord:
     def retry_urls(self) -> List[str]:
         """URLs to use when retrying only failed items."""
         return self.failed_urls if self.failed_urls else self.urls
+
+    @staticmethod
+    def _normalize_download_groups(groups: Optional[List[Dict]]) -> List[Dict]:
+        """Keep only the per-folder retry metadata we need to persist."""
+        normalized: List[Dict] = []
+        for group in groups or []:
+            if not isinstance(group, dict):
+                continue
+            download_dir = str(group.get("download_dir", "")).strip()
+            urls = [u for u in group.get("urls", []) if isinstance(u, str) and u.strip()]
+            if download_dir and urls:
+                normalized.append({"download_dir": download_dir, "urls": urls})
+        return normalized
 
 
 # ── TaskHistoryManager ────────────────────────────────────────────────────────
@@ -196,12 +213,18 @@ class TaskHistoryManager:
 
     # ── Public API ─────────────────────────────────────────────────────────
 
-    def begin_task(self, urls: List[str], download_dir: str) -> TaskRecord:
+    def begin_task(
+        self,
+        urls: List[str],
+        download_dir: str,
+        download_groups: Optional[List[Dict]] = None,
+    ) -> TaskRecord:
         """Create a new task and register it in the persistent queue."""
         task = TaskRecord(
             task_id      = str(uuid.uuid4()),
             urls         = urls,
             download_dir = download_dir,
+            download_groups = download_groups,
         )
         self._queue.put(task.to_dict())
         return task
@@ -224,6 +247,12 @@ class TaskHistoryManager:
 
     def get_history(self) -> List[TaskRecord]:
         return list(self._history)
+
+    def get_task(self, task_id: str) -> Optional[TaskRecord]:
+        for task in self._history:
+            if task.id == task_id:
+                return task
+        return None
 
     def delete_task(self, task_id: str):
         """Remove a task from history by its ID."""

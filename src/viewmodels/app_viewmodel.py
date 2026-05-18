@@ -41,7 +41,7 @@ class AppViewModel(QObject):
     isDownloadingChanged   = Signal()            # bool property changed
     exportProgressChanged  = Signal(int, int)    # (done_chats, total_chats)
     exportResultReady      = Signal(list)        # list of {id,file} dicts
-    downloadFinished       = Signal(str, int, int, str)  # status, downloaded, expected, failed_urls_json
+    downloadFinished       = Signal(str, int, int, str, str)  # status, downloaded, expected, failed_urls_json, task_id
     def __init__(
         self,
         session_vm: SessionViewModel,
@@ -253,12 +253,32 @@ class AppViewModel(QObject):
             all_urls.extend(q.get("urls", []))
 
         output_dir = self._queue_vm.outputDir
+        download_groups = self._build_queue_download_groups(queues, output_dir)
         session_args = self._build_session_export_args(
             self._build_config()  # only session fields are used
         )
         queue_bat = str(self._batch.current_dir / "tdl_queue.bat")
-        self._start_tracked_download(all_urls, output_dir, session_args,
-                                     batch_path=queue_bat)
+        self._start_tracked_download(
+            all_urls,
+            output_dir,
+            session_args,
+            batch_path=queue_bat,
+            download_groups=download_groups,
+        )
+
+    def _build_queue_download_groups(self, queues: list, output_dir: str) -> list[dict]:
+        groups = []
+        for q in queues:
+            urls = q.get("urls", [])
+            if not urls:
+                continue
+            name = q.get("name", "unnamed")
+            seg = q.get("uuid_segment", "0000")
+            groups.append({
+                "download_dir": os.path.join(output_dir, f"{name}_{seg}"),
+                "urls": list(urls),
+            })
+        return groups
 
     # ── isDownloading property ──────────────────────────────────────
 
@@ -314,8 +334,14 @@ class AppViewModel(QObject):
             args += ["--storage", storage]
         return args
 
-    def _start_tracked_download(self, urls: list, download_dir: str,
-                                 session_args: list, batch_path: str = None):
+    def _start_tracked_download(
+        self,
+        urls: list,
+        download_dir: str,
+        session_args: list,
+        batch_path: str = None,
+        download_groups: list[dict] = None,
+    ):
         """Launch the full tracking flow in a background thread.
         
         Args:
@@ -334,7 +360,7 @@ class AppViewModel(QObject):
 
         def _worker():
             # ── Step 1: Create task record ──────────────────────────
-            task = self._history_mgr.begin_task(urls, download_dir)
+            task = self._history_mgr.begin_task(urls, download_dir, download_groups)
 
             # ── Step 2: Optionally fetch expected file list & confirm ──
             if self._download_vm.preDownloadCheck:
@@ -355,7 +381,7 @@ class AppViewModel(QObject):
                     self.history_vm.refresh()
                     self._is_downloading = False
                     self.isDownloadingChanged.emit()
-                    self.downloadFinished.emit("cancelled", 0, task.expected_count, "[]")
+                    self.downloadFinished.emit("cancelled", 0, task.expected_count, "[]", task.id)
                     return
             else:
                 # Skip pre-check – go straight to download
@@ -363,7 +389,15 @@ class AppViewModel(QObject):
                 task.expected_count = 0
 
             # ── Step 4: Snapshot directory before download ──────────
-            before = snapshot_directory(download_dir)
+            before = (
+                {
+                    group.get("download_dir", ""): snapshot_directory(group.get("download_dir", ""))
+                    for group in download_groups or []
+                    if group.get("download_dir")
+                }
+                if download_groups
+                else snapshot_directory(download_dir)
+            )
 
             # ── Step 5: Run download (blocking with visible console) ─
             try:
@@ -378,12 +412,22 @@ class AppViewModel(QObject):
                 self.history_vm.refresh()
                 self._is_downloading = False
                 self.isDownloadingChanged.emit()
-                self.downloadFinished.emit("failed", 0, task.expected_count, "[]")
+                self.downloadFinished.emit("failed", 0, task.expected_count, json.dumps(list(urls), ensure_ascii=False), task.id)
                 return
 
             # ── Step 6: Verify downloads ────────────────────────────
-            after    = snapshot_directory(download_dir)
-            new_files = get_new_files(before, after)
+            if download_groups:
+                new_files = []
+                for group in download_groups:
+                    group_dir = group.get("download_dir", "")
+                    group_after = snapshot_directory(group_dir)
+                    group_before = before.get(group_dir, {})
+                    group_new_files = get_new_files(group_before, group_after)
+                    prefix = os.path.relpath(group_dir, download_dir)
+                    new_files.extend(os.path.join(prefix, p) for p in group_new_files)
+            else:
+                after = snapshot_directory(download_dir)
+                new_files = get_new_files(before, after)
             task.new_files        = new_files
             task.downloaded_count = len(new_files)
 
@@ -401,6 +445,8 @@ class AppViewModel(QObject):
             else:
                 # Export failed – judge by whether any files appeared
                 task.status = STATUS_COMPLETED if new_files else STATUS_FAILED
+                if task.status == STATUS_FAILED:
+                    task.failed_urls = list(urls)
 
             # ── Step 7: Persist result ──────────────────────────────
             self._history_mgr.complete_task(task)
@@ -415,6 +461,7 @@ class AppViewModel(QObject):
                 task.downloaded_count,
                 task.expected_count,
                 failed_urls_json,
+                task.id,
             )
             # Clear URL model on success/partial
             if task.status != STATUS_FAILED:
@@ -440,7 +487,7 @@ class AppViewModel(QObject):
 
     # ── Retry from history ──────────────────────────────────────────
 
-    def _on_retry_requested(self, urls_json: str, retry_failed_only: bool):
+    def _on_retry_requested(self, urls_json: str, retry_failed_only: bool, task_id: str = ""):
         """Handle retry requests from the history panel."""
         try:
             urls = json.loads(urls_json)
@@ -449,7 +496,22 @@ class AppViewModel(QObject):
         if not urls:
             return
 
-        # Build config for retry
+        self._retry_urls(urls, retry_failed_only, task_id)
+
+    @Slot(str, str, bool)
+    def retryTaskUrls(self, task_id: str, urls_json: str, retry_failed_only: bool):
+        """Retry a completed task from the result dialog, preserving its folders."""
+        try:
+            urls = json.loads(urls_json)
+        except Exception:
+            return
+        if not urls:
+            task = self._history_mgr.get_task(task_id)
+            urls = task.retry_urls if task is not None else []
+        if urls:
+            self._retry_urls(urls, retry_failed_only, task_id)
+
+    def _retry_urls(self, urls: list, retry_failed_only: bool, task_id: str = ""):
         config = self._build_config()
         config.download.urls = urls
 
@@ -460,17 +522,53 @@ class AppViewModel(QObject):
             config.download.restart   = True
             config.download.skip_same = False
 
-        ok, msg = self._batch.generate_batch(config, auto_close=True)
+        task = self._history_mgr.get_task(task_id) if task_id else None
+        download_groups = self._build_retry_download_groups(task, urls)
+
+        if download_groups:
+            ok, msg = self._batch.generate_grouped_download_batch(
+                download_groups,
+                config.session,
+                download_cfg_template=config.download,
+                auto_close=True,
+            )
+        else:
+            ok, msg = self._batch.generate_batch(config, auto_close=True)
         if not ok:
             self.notificationRequested.emit("重试", msg, "error")
             return
 
-        download_dir = config.download.directory
-        if config.download.subfolder_enabled and config.download.subfolder.strip():
-            download_dir = os.path.join(download_dir, config.download.subfolder.strip())
+        if download_groups:
+            download_dir = task.download_dir
+        else:
+            download_dir = config.download.directory
+            if config.download.subfolder_enabled and config.download.subfolder.strip():
+                download_dir = os.path.join(download_dir, config.download.subfolder.strip())
 
         session_args = self._build_session_export_args(config)
-        self._start_tracked_download(urls, download_dir, session_args)
+        self._start_tracked_download(
+            urls,
+            download_dir,
+            session_args,
+            download_groups=download_groups,
+        )
+
+    def _build_retry_download_groups(self, task, urls: list) -> list[dict]:
+        if task is None or not task.download_groups:
+            return []
+
+        remaining = set(urls)
+        groups = []
+        for group in task.download_groups:
+            group_urls = [url for url in group.get("urls", []) if url in remaining]
+            if not group_urls:
+                continue
+            groups.append({
+                "download_dir": group.get("download_dir", ""),
+                "urls": group_urls,
+            })
+
+        return groups
 
     # ── Login ───────────────────────────────────────────────────────
 
